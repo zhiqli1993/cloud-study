@@ -1,0 +1,23 @@
+{
+  "registry-mirrors": [
+    "https://docker.1ms.run",
+    "https://dockerhub.azk8s.cn",
+    "https://docker.anyhub.us.kg",
+    "https://dockerhub.jobcher.com",
+    "https://dockerhub.icu"
+  ],
+  "insecure-registries": [
+    "hubproxy.docker.internal:5555"
+  ],
+  "log-driver": "json-file",
+  "log-opts": {
+    "max-size": "10m",
+    "max-file": "3"
+  },
+  "storage-driver": "overlay2",
+  "max-concurrent-downloads": 10,
+  "max-concurrent-uploads": 5,
+  "dns": ["8.8.8.8", "114.114.114.114", "223.5.5.5"],
+  "debug": false,
+  "experimental": false
+}
