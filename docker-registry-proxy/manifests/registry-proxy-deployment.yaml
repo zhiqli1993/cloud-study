@@ -1,0 +1,426 @@
+# Registry代理服务部署配置
+# 提供Docker Registry代理和缓存功能
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: registry-proxy
+  namespace: default
+  labels:
+    app: registry-proxy
+    component: proxy
+    version: v1.0.0
+spec:
+  replicas: 2
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  selector:
+    matchLabels:
+      app: registry-proxy
+      component: proxy
+  template:
+    metadata:
+      labels:
+        app: registry-proxy
+        component: proxy
+        version: v1.0.0
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "5001"
+        prometheus.io/path: "/metrics"
+    spec:
+      serviceAccountName: registry-proxy-sa
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65534
+        fsGroup: 65534
+      containers:
+        - name: registry-proxy
+          image: registry:2.8.3
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 5000
+              protocol: TCP
+            - name: metrics
+              containerPort: 5001
+              protocol: TCP
+          env:
+            # Registry基本配置
+            - name: REGISTRY_HTTP_ADDR
+              value: "0.0.0.0:5000"
+            - name: REGISTRY_HTTP_SECRET
+              value: "registry-http-secret"
+            - name: REGISTRY_LOG_LEVEL
+              value: "info"
+            
+            # 存储配置
+            - name: REGISTRY_STORAGE_FILESYSTEM_ROOTDIRECTORY
+              value: "/var/lib/registry"
+            - name: REGISTRY_STORAGE_DELETE_ENABLED
+              value: "true"
+            
+            # 代理配置
+            - name: REGISTRY_PROXY_REMOTEURL
+              value: "https://registry-1.docker.io"
+            - name: REGISTRY_PROXY_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: registry-secret
+                  key: username
+                  optional: true
+            - name: REGISTRY_PROXY_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: registry-secret
+                  key: password
+                  optional: true
+            
+            # HTTP代理配置
+            - name: HTTP_PROXY
+              valueFrom:
+                configMapKeyRef:
+                  name: registry-proxy-config
+                  key: http_proxy
+                  optional: true
+            - name: HTTPS_PROXY
+              valueFrom:
+                configMapKeyRef:
+                  name: registry-proxy-config
+                  key: https_proxy
+                  optional: true
+            - name: NO_PROXY
+              valueFrom:
+                configMapKeyRef:
+                  name: registry-proxy-config
+                  key: no_proxy
+                  optional: true
+            
+            # 健康检查配置
+            - name: REGISTRY_HEALTH_STORAGEDRIVER_ENABLED
+              value: "true"
+            - name: REGISTRY_HTTP_DEBUG_ADDR
+              value: "0.0.0.0:5001"
+            - name: REGISTRY_HTTP_DEBUG_PROMETHEUS_ENABLED
+              value: "true"
+          
+          volumeMounts:
+            - name: registry-data
+              mountPath: /var/lib/registry
+            - name: registry-config
+              mountPath: /etc/docker/registry
+              readOnly: true
+            - name: registry-certs
+              mountPath: /certs
+              readOnly: true
+            - name: tmp
+              mountPath: /tmp
+          
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+          
+          livenessProbe:
+            httpGet:
+              path: /v2/
+              port: 5000
+              scheme: HTTP
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+            successThreshold: 1
+          
+          readinessProbe:
+            httpGet:
+              path: /v2/
+              port: 5000
+              scheme: HTTP
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 3
+            successThreshold: 1
+          
+          startupProbe:
+            httpGet:
+              path: /v2/
+              port: 5000
+              scheme: HTTP
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 30
+            successThreshold: 1
+        
+        # Sidecar容器：Registry缓存清理
+        - name: cache-cleaner
+          image: alpine:3.18
+          imagePullPolicy: IfNotPresent
+          command:
+            - /bin/sh
+            - -c
+            - |
+              while true; do
+                echo "$(date): Starting registry cache cleanup..."
+                find /var/lib/registry -type f -name "*.tmp" -mtime +1 -delete
+                find /var/lib/registry -type f -name "*.partial" -mtime +1 -delete
+                echo "$(date): Cache cleanup completed"
+                sleep 3600  # 每小时清理一次
+              done
+          volumeMounts:
+            - name: registry-data
+              mountPath: /var/lib/registry
+          resources:
+            requests:
+              cpu: 10m
+              memory: 16Mi
+            limits:
+              cpu: 50m
+              memory: 64Mi
+      
+      volumes:
+        - name: registry-data
+          persistentVolumeClaim:
+            claimName: registry-proxy-pvc
+        - name: registry-config
+          configMap:
+            name: registry-proxy-config
+            items:
+              - key: config.yml
+                path: config.yml
+        - name: registry-certs
+          secret:
+            secretName: registry-tls-secret
+            optional: true
+        - name: tmp
+          emptyDir:
+            sizeLimit: 1Gi
+      
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              podAffinityTerm:
+                labelSelector:
+                  matchExpressions:
+                    - key: app
+                      operator: In
+                      values:
+                        - registry-proxy
+                topologyKey: kubernetes.io/hostname
+      
+      tolerations:
+        - key: node.kubernetes.io/not-ready
+          operator: Exists
+          effect: NoExecute
+          tolerationSeconds: 300
+        - key: node.kubernetes.io/unreachable
+          operator: Exists
+          effect: NoExecute
+          tolerationSeconds: 300
+
+---
+# Registry代理存储PVC
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: registry-proxy-pvc
+  namespace: default
+  labels:
+    app: registry-proxy
+    component: storage
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 20Gi
+  storageClassName: standard
+
+---
+# Registry配置ConfigMap
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: registry-proxy-config
+  namespace: default
+  labels:
+    app: registry-proxy
+    component: config
+data:
+  config.yml: |
+    version: 0.1
+    log:
+      level: info
+      formatter: text
+      fields:
+        service: registry
+    
+    storage:
+      filesystem:
+        rootdirectory: /var/lib/registry
+      delete:
+        enabled: true
+      maintenance:
+        uploadpurging:
+          enabled: true
+          age: 168h
+          interval: 24h
+          dryrun: false
+        readonly:
+          enabled: false
+    
+    http:
+      addr: :5000
+      host: http://registry-proxy:5000
+      secret: registry-http-secret
+      debug:
+        addr: :5001
+        prometheus:
+          enabled: true
+          path: /metrics
+      headers:
+        X-Content-Type-Options:
+          - nosniff
+        Access-Control-Allow-Origin:
+          - "*"
+        Access-Control-Allow-Methods:
+          - HEAD,GET,OPTIONS,DELETE
+        Access-Control-Allow-Headers:
+          - Authorization,Accept,Cache-Control
+    
+    proxy:
+      remoteurl: https://registry-1.docker.io
+      ttl: 168h
+    
+    health:
+      storagedriver:
+        enabled: true
+        interval: 10s
+        threshold: 3
+    
+    redis:
+      addr: redis:6379
+      password: ""
+      db: 0
+      dialtimeout: 10ms
+      readtimeout: 10ms
+      writetimeout: 10ms
+      pool:
+        maxidle: 16
+        maxactive: 64
+        idletimeout: 300s
+    
+    notifications:
+      events:
+        includereferences: true
+      endpoints:
+        - name: webhook
+          disabled: true
+          url: http://webhook:5000/webhook
+          headers:
+            Authorization: [Bearer token]
+          timeout: 1s
+          threshold: 10
+          backoff: 1s
+          ignoredmediatypes:
+            - application/octet-stream
+          ignore:
+            mediatypes:
+              - application/octet-stream
+            actions:
+              - pull
+  
+  # HTTP代理环境变量
+  http_proxy: ""
+  https_proxy: ""
+  no_proxy: "localhost,127.0.0.1,10.0.0.0/8,172.16.0.0/12,192.168.0.0/16,*.local,*.internal"
+
+---
+# Registry代理Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: registry-proxy
+  namespace: default
+  labels:
+    app: registry-proxy
+    component: service
+spec:
+  type: ClusterIP
+  ports:
+    - name: http
+      port: 5000
+      targetPort: 5000
+      protocol: TCP
+    - name: metrics
+      port: 5001
+      targetPort: 5001
+      protocol: TCP
+  selector:
+    app: registry-proxy
+    component: proxy
+
+---
+# Registry代理NodePort Service（可选，用于外部访问）
+apiVersion: v1
+kind: Service
+metadata:
+  name: registry-proxy-nodeport
+  namespace: default
+  labels:
+    app: registry-proxy
+    component: nodeport-service
+spec:
+  type: NodePort
+  ports:
+    - name: http
+      port: 5000
+      targetPort: 5000
+      nodePort: 30500
+      protocol: TCP
+  selector:
+    app: registry-proxy
+    component: proxy
+
+---
+# Registry代理Ingress（可选，用于域名访问）
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: registry-proxy-ingress
+  namespace: default
+  labels:
+    app: registry-proxy
+    component: ingress
+  annotations:
+    nginx.ingress.kubernetes.io/proxy-body-size: 1024m
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "600"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "600"
+    nginx.ingress.kubernetes.io/client-max-body-size: 1024m
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+spec:
+  ingressClassName: nginx
+  tls:
+    - hosts:
+        - registry.local
+      secretName: registry-tls-secret
+  rules:
+    - host: registry.local
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: registry-proxy
+                port:
+                  number: 5000

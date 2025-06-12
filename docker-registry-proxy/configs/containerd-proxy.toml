@@ -1,0 +1,181 @@
+# Containerd配置文件 - Registry代理和镜像加速
+# 位置: /etc/containerd/config.toml
+
+version = 2
+
+# 根配置
+root = "/var/lib/containerd"
+state = "/run/containerd"
+plugin_dir = ""
+disabled_plugins = []
+required_plugins = []
+oom_score = 0
+
+[grpc]
+  address = "/run/containerd/containerd.sock"
+  tcp_address = ""
+  tcp_tls_cert = ""
+  tcp_tls_key = ""
+  uid = 0
+  gid = 0
+  max_recv_message_size = 16777216
+  max_send_message_size = 16777216
+
+[ttrpc]
+  address = ""
+  uid = 0
+  gid = 0
+
+[debug]
+  address = ""
+  uid = 0
+  gid = 0
+  level = ""
+
+[metrics]
+  address = ""
+  grpc_histogram = false
+
+# CRI插件配置
+[plugins."io.containerd.grpc.v1.cri"]
+  disable_tcp_service = true
+  stream_server_address = "127.0.0.1"
+  stream_server_port = "0"
+  stream_idle_timeout = "4h0m0s"
+  enable_selinux = false
+  selinux_category_range = 1024
+  sandbox_image = "k8s.gcr.io/pause:3.6"
+  stats_collect_period = 10
+  systemd_cgroup = false
+  enable_tls_streaming = false
+  max_container_log_line_size = 16384
+  disable_cgroup = false
+  disable_apparmor = false
+  restrict_oom_score_adj = false
+  max_concurrent_downloads = 3
+  disable_proc_mount = false
+  unset_seccomp_profile = ""
+  tolerate_missing_hugetlb_controller = true
+  disable_hugetlb_controller = true
+  ignore_image_defined_volumes = false
+
+  # Registry配置 - 这是重点配置部分
+  [plugins."io.containerd.grpc.v1.cri".registry]
+    config_path = ""
+
+    # 镜像加速器配置
+    [plugins."io.containerd.grpc.v1.cri".registry.mirrors]
+      
+      # Docker Hub镜像加速
+      [plugins."io.containerd.grpc.v1.cri".registry.mirrors."docker.io"]
+        endpoint = [
+          "https://dockerhub.azk8s.cn",
+          "https://docker.mirrors.ustc.edu.cn", 
+          "https://hub-mirror.c.163.com",
+          "https://mirror.baidubce.com"
+        ]
+      
+      # Google Container Registry镜像加速
+      [plugins."io.containerd.grpc.v1.cri".registry.mirrors."k8s.gcr.io"]
+        endpoint = [
+          "https://k8s-gcr.azk8s.cn",
+          "https://gcr.azk8s.cn"
+        ]
+      
+      # GitHub Container Registry镜像加速
+      [plugins."io.containerd.grpc.v1.cri".registry.mirrors."ghcr.io"]
+        endpoint = [
+          "https://ghcr.azk8s.cn"
+        ]
+      
+      # Quay.io镜像加速
+      [plugins."io.containerd.grpc.v1.cri".registry.mirrors."quay.io"]
+        endpoint = [
+          "https://quay.azk8s.cn"
+        ]
+      
+      # 本地私有Registry
+      [plugins."io.containerd.grpc.v1.cri".registry.mirrors."localhost:5000"]
+        endpoint = ["http://localhost:5000"]
+      
+      [plugins."io.containerd.grpc.v1.cri".registry.mirrors."registry.local:5000"]
+        endpoint = ["http://registry.local:5000"]
+
+    # Registry认证和TLS配置
+    [plugins."io.containerd.grpc.v1.cri".registry.configs]
+      
+      # 企业私有Registry配置示例
+      [plugins."io.containerd.grpc.v1.cri".registry.configs."registry.company.com".tls]
+        insecure_skip_verify = false
+        ca_file = "/etc/ssl/certs/ca-certificates.crt"
+        cert_file = ""
+        key_file = ""
+      
+      [plugins."io.containerd.grpc.v1.cri".registry.configs."registry.company.com".auth]
+        username = "myuser"
+        password = "mypass"
+        auth = ""
+        identitytoken = ""
+      
+      # 本地Registry配置（跳过TLS验证）
+      [plugins."io.containerd.grpc.v1.cri".registry.configs."localhost:5000".tls]
+        insecure_skip_verify = true
+      
+      [plugins."io.containerd.grpc.v1.cri".registry.configs."registry.local:5000".tls]
+        insecure_skip_verify = true
+
+  # 网络插件配置
+  [plugins."io.containerd.grpc.v1.cri".cni]
+    bin_dir = "/opt/cni/bin"
+    conf_dir = "/etc/cni/net.d"
+    max_conf_num = 1
+    conf_template = ""
+
+  # 容器运行时配置
+  [plugins."io.containerd.grpc.v1.cri".containerd]
+    snapshotter = "overlayfs"
+    default_runtime_name = "runc"
+    no_pivot = false
+    disable_snapshot_annotations = true
+    discard_unpacked_layers = false
+    
+    [plugins."io.containerd.grpc.v1.cri".containerd.runtimes]
+      [plugins."io.containerd.grpc.v1.cri".containerd.runtimes.runc]
+        runtime_type = "io.containerd.runc.v2"
+        runtime_engine = ""
+        runtime_root = ""
+        privileged_without_host_devices = false
+        base_runtime_spec = ""
+        [plugins."io.containerd.grpc.v1.cri".containerd.runtimes.runc.options]
+          SystemdCgroup = true
+
+# Proxy插件配置（用于HTTP/HTTPS代理）
+[plugins."io.containerd.internal.v1.opt"]
+  path = "/opt/containerd"
+
+# 快照存储配置
+[plugins."io.containerd.snapshotter.v1.overlayfs"]
+  root_path = ""
+
+# Metrics配置
+[plugins."io.containerd.monitor.v1.cgroups"]
+  no_prometheus = false
+
+# 事件配置
+[plugins."io.containerd.runtime.v1.linux"]
+  shim = "containerd-shim"
+  runtime = "runc"
+  runtime_root = ""
+  no_shim = false
+  shim_debug = false
+
+[plugins."io.containerd.runtime.v2.task"]
+  platforms = ["linux/amd64"]
+
+# GC垃圾回收配置
+[plugins."io.containerd.gc.v1.scheduler"]
+  pause_threshold = 0.02
+  deletion_threshold = 0
+  mutation_threshold = 100
+  schedule_delay = "0s"
+  startup_delay = "100ms"

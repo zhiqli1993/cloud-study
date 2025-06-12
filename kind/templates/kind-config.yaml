@@ -1,0 +1,1433 @@
+# Kind Configuration Template - Comprehensive Edition
+# This file provides the most comprehensive template for configuring a Kind (Kubernetes in Docker) cluster
+# Kind version: v0.20.0+
+# Kubernetes version: v1.28.0+
+# 
+# This configuration includes almost all possible Kind configuration options
+# Uncomment and modify sections as needed for your specific use case
+
+kind: Cluster
+apiVersion: kind.x-k8s.io/v1alpha4
+
+# =============================================================================
+# CLUSTER METADATA
+# =============================================================================
+
+# Cluster name (optional)
+# If not specified, kind will generate a name
+name: comprehensive-cluster
+
+# =============================================================================
+# NETWORKING CONFIGURATION
+# =============================================================================
+
+networking:
+  # API Server configuration
+  # By default, the cluster will use a random open port on the host
+  # You can specify a specific port for the API server
+  apiServerPort: 6443
+  
+  # Alternative API server address (optional)
+  # Useful when running in environments with specific network requirements
+  apiServerAddress: "127.0.0.1"
+  
+  # Cluster's internal IP subnet used for Services
+  # Default: "10.96.0.0/16"
+  serviceSubnet: "10.96.0.0/16"
+  
+  # Cluster's internal IP subnet used for Pods
+  # Default: "10.244.0.0/16"
+  podSubnet: "10.244.0.0/16"
+  
+  # Disable the default CNI (Container Network Interface)
+  # Set to true if you want to install your own CNI (Calico, Cilium, etc.)
+  disableDefaultCNI: false
+  
+  # Configure kube-proxy mode
+  # Options: "iptables", "ipvs", "userspace"
+  kubeProxyMode: "iptables"
+  
+  # IP family for the cluster
+  # Options: "ipv4", "ipv6", "dual"
+  ipFamily: ipv4
+  
+  # DNS domain for the cluster
+  # Default: "cluster.local"
+  dnsDomain: "cluster.local"
+
+# =============================================================================
+# NODES CONFIGURATION
+# =============================================================================
+
+nodes:
+  # ==========================================================================
+  # CONTROL PLANE NODES
+  # ==========================================================================
+  
+  # Primary control plane node
+  - role: control-plane
+    # Docker image to use for this node
+    # Leave empty to use default image for the Kind version
+    image: kindest/node:v1.28.0
+    
+    # Node name (optional, will be auto-generated if not specified)
+    # name: control-plane-1
+    
+    # Extra mounts for the control plane node
+    extraMounts:
+      # Mount host machine-id for consistent node identity
+      - hostPath: /etc/machine-id
+        containerPath: /etc/machine-id
+        readOnly: true
+        selinuxRelabel: false
+        propagation: None
+      
+      # Mount host timezone information
+      - hostPath: /etc/localtime
+        containerPath: /etc/localtime
+        readOnly: true
+        selinuxRelabel: false
+        propagation: None
+      
+      # Mount custom CA certificates (uncomment if needed)
+      # - hostPath: /usr/local/share/ca-certificates
+      #   containerPath: /usr/local/share/ca-certificates
+      #   readOnly: true
+      #   selinuxRelabel: false
+      #   propagation: None
+      
+      # Mount docker socket for docker-in-docker scenarios
+      # - hostPath: /var/run/docker.sock
+      #   containerPath: /var/run/docker.sock
+      #   readOnly: false
+      #   selinuxRelabel: false
+      #   propagation: None
+      
+      # Mount custom storage directory
+      # - hostPath: /tmp/kind-storage
+      #   containerPath: /mnt/storage
+      #   readOnly: false
+      #   selinuxRelabel: false
+      #   propagation: Bidirectional
+    
+    # Extra port mappings for the control plane node
+    extraPortMappings:
+      # HTTP ingress port
+      - containerPort: 80
+        hostPort: 80
+        protocol: TCP
+        listenAddress: "0.0.0.0"
+      
+      # HTTPS ingress port
+      - containerPort: 443
+        hostPort: 443
+        protocol: TCP
+        listenAddress: "0.0.0.0"
+      
+      # NodePort services range (30000-32767)
+      - containerPort: 30000
+        hostPort: 30000
+        protocol: TCP
+        listenAddress: "0.0.0.0"
+      
+      - containerPort: 30001
+        hostPort: 30001
+        protocol: TCP
+        listenAddress: "0.0.0.0"
+      
+      # Custom application ports
+      - containerPort: 8080
+        hostPort: 8080
+        protocol: TCP
+        listenAddress: "0.0.0.0"
+      
+      - containerPort: 9090
+        hostPort: 9090
+        protocol: TCP
+        listenAddress: "0.0.0.0"
+      
+      # Monitoring ports (Prometheus, Grafana, etc.)
+      - containerPort: 3000
+        hostPort: 3000
+        protocol: TCP
+        listenAddress: "0.0.0.0"
+      
+      - containerPort: 9100
+        hostPort: 9100
+        protocol: TCP
+        listenAddress: "0.0.0.0"
+      
+      # Database ports (for development)
+      # - containerPort: 5432
+      #   hostPort: 5432
+      #   protocol: TCP
+      #   listenAddress: "127.0.0.1"
+      
+      # - containerPort: 3306
+      #   hostPort: 3306
+      #   protocol: TCP
+      #   listenAddress: "127.0.0.1"
+      
+      # - containerPort: 6379
+      #   hostPort: 6379
+      #   protocol: TCP
+      #   listenAddress: "127.0.0.1"
+    
+    # Kubernetes labels to apply to the node
+    labels:
+      node-type: control-plane
+      environment: development
+      zone: zone-a
+      instance-type: standard
+      ingress-ready: "true"
+      monitoring: "enabled"
+      # Custom labels
+      team: platform
+      cost-center: engineering
+      backup: "enabled"
+    
+    # Kubernetes node configuration patches
+    kubeadmConfigPatches:
+      - |
+        kind: InitConfiguration
+        nodeRegistration:
+          kubeletExtraArgs:
+            node-labels: "ingress-ready=true,node-type=control-plane"
+            system-reserved: "cpu=100m,memory=100Mi,ephemeral-storage=1Gi"
+            kube-reserved: "cpu=100m,memory=100Mi,ephemeral-storage=1Gi"
+            eviction-hard: "memory.available<100Mi,nodefs.available<10%,nodefs.inodesFree<5%"
+            max-pods: "110"
+      
+      - |
+        kind: KubeProxyConfiguration
+        metricsBindAddress: 0.0.0.0:10249
+        mode: iptables
+        clusterCIDR: "10.244.0.0/16"
+        
+      - |
+        kind: KubeletConfiguration
+        cgroupDriver: systemd
+        maxPods: 110
+        serverTLSBootstrap: true
+        rotateCertificates: true
+        protectKernelDefaults: false
+        systemReserved:
+          cpu: "100m"
+          memory: "100Mi"
+          ephemeral-storage: "1Gi"
+        kubeReserved:
+          cpu: "100m"
+          memory: "100Mi"
+          ephemeral-storage: "1Gi"
+        evictionHard:
+          memory.available: "100Mi"
+          nodefs.available: "10%"
+          nodefs.inodesFree: "5%"
+        featureGates:
+          CSIMigration: true
+          EphemeralContainers: true
+
+  # Secondary control plane node (for HA setup)
+  # Uncomment for multi-master configuration
+  # - role: control-plane
+  #   image: kindest/node:v1.28.0
+  #   labels:
+  #     node-type: control-plane
+  #     environment: development
+  #     zone: zone-b
+  #     instance-type: standard
+  #   extraMounts:
+  #     - hostPath: /etc/machine-id
+  #       containerPath: /etc/machine-id
+  #       readOnly: true
+
+  # Third control plane node (for HA setup)
+  # Uncomment for multi-master configuration
+  # - role: control-plane
+  #   image: kindest/node:v1.28.0
+  #   labels:
+  #     node-type: control-plane
+  #     environment: development
+  #     zone: zone-c
+  #     instance-type: standard
+
+  # ==========================================================================
+  # WORKER NODES
+  # ==========================================================================
+  
+  # Worker node 1
+  - role: worker
+    image: kindest/node:v1.28.0
+    # name: worker-1
+    
+    labels:
+      node-type: worker
+      environment: development
+      zone: zone-a
+      instance-type: standard
+      workload-type: general
+      gpu: "false"
+      storage-type: ssd
+      network-tier: standard
+      
+    extraMounts:
+      - hostPath: /etc/machine-id
+        containerPath: /etc/machine-id
+        readOnly: true
+        selinuxRelabel: false
+        propagation: None
+      
+      - hostPath: /etc/localtime
+        containerPath: /etc/localtime
+        readOnly: true
+        selinuxRelabel: false
+        propagation: None
+      
+      # Worker-specific storage mount
+      # - hostPath: /tmp/worker1-storage
+      #   containerPath: /mnt/worker-storage
+      #   readOnly: false
+      #   selinuxRelabel: false
+      #   propagation: Bidirectional
+    
+    # Extra port mappings for worker node
+    extraPortMappings:
+      # NodePort service ports
+      - containerPort: 30002
+        hostPort: 30002
+        protocol: TCP
+        listenAddress: "0.0.0.0"
+      
+      - containerPort: 30003
+        hostPort: 30003
+        protocol: TCP
+        listenAddress: "0.0.0.0"
+    
+    kubeadmConfigPatches:
+      - |
+        kind: KubeletConfiguration
+        maxPods: 110
+        cgroupDriver: systemd
+        systemReserved:
+          cpu: "100m"
+          memory: "100Mi"
+          ephemeral-storage: "1Gi"
+        kubeReserved:
+          cpu: "100m"
+          memory: "100Mi"
+          ephemeral-storage: "1Gi"
+
+  # Worker node 2
+  - role: worker
+    image: kindest/node:v1.28.0
+    # name: worker-2
+    
+    labels:
+      node-type: worker
+      environment: development
+      zone: zone-b
+      instance-type: standard
+      workload-type: compute-intensive
+      gpu: "false"
+      storage-type: nvme
+      network-tier: high-performance
+    
+    extraMounts:
+      - hostPath: /etc/machine-id
+        containerPath: /etc/machine-id
+        readOnly: true
+    
+    extraPortMappings:
+      - containerPort: 30004
+        hostPort: 30004
+        protocol: TCP
+        listenAddress: "0.0.0.0"
+
+  # Worker node 3 (uncomment to add a third worker)
+  # - role: worker
+  #   image: kindest/node:v1.28.0
+  #   # name: worker-3
+  #   labels:
+  #     node-type: worker
+  #     environment: development
+  #     zone: zone-c
+  #     instance-type: memory-optimized
+  #     workload-type: memory-intensive
+  #     gpu: "false"
+  #     storage-type: ssd
+
+  # GPU-enabled worker node (uncomment if GPU support needed)
+  # - role: worker
+  #   image: kindest/node:v1.28.0
+  #   # name: worker-gpu
+  #   labels:
+  #     node-type: worker
+  #     environment: development
+  #     zone: zone-a
+  #     instance-type: gpu-enabled
+  #     workload-type: ml-workload
+  #     gpu: "true"
+  #     gpu-type: nvidia-tesla-v100
+
+# =============================================================================
+# FEATURE GATES CONFIGURATION
+# =============================================================================
+
+# Feature gates configuration
+# Enable/disable Kubernetes feature gates
+featureGates:
+  # Stable features (generally safe to enable)
+  "CSIMigration": true
+  "EphemeralContainers": true
+  "ServiceInternalTrafficPolicy": true
+  "EndpointSliceTerminatingCondition": true
+  "PodReadinessGates": true
+  "ServiceAccountIssuerDiscovery": true
+  
+  # Beta features (use with caution in production)
+  "CSIStorageCapacity": true
+  "GenericEphemeralVolume": true
+  "StatefulSetAutoDeletePVC": true
+  "ServerSideApply": true
+  "CSIServiceAccountToken": true
+  "ConfigurableFSGroupPolicy": true
+  "NonPreemptingPriority": true
+  "PodDeletionCost": true
+  "ProbeTerminationGracePeriod": true
+  
+  # Alpha features (experimental, use only for testing)
+  # "NetworkPolicyEndPort": true
+  # "ServiceLBNodePortControl": true
+  # "MixedProtocolLBService": true
+  # "LocalStorageCapacityIsolation": true
+  # "HPAContainerMetrics": true
+  # "SeccompDefault": true
+  # "KubeletCredentialProviders": true
+
+# =============================================================================
+# RUNTIME CONFIGURATION
+# =============================================================================
+
+# Runtime configuration
+# Configure the container runtime API versions and features
+runtimeConfig:
+  "api/all": "true"
+  # "batch/v2alpha1": "true"
+  # "apps/v1beta1": "true"
+  # "extensions/v1beta1/daemonsets": "true"
+  # "extensions/v1beta1/deployments": "true"
+  # "extensions/v1beta1/replicasets": "true"
+  # "extensions/v1beta1/networkpolicies": "true"
+  # "extensions/v1beta1/podsecuritypolicies": "true"
+
+# =============================================================================
+# KUBEADM CONFIGURATION PATCHES
+# =============================================================================
+
+# Kubernetes configuration patches
+# Apply patches to various Kubernetes components
+kubeadmConfigPatches:
+  # Cluster Configuration
+  - |
+    kind: ClusterConfiguration
+    metadata:
+      name: config
+    kubernetesVersion: v1.28.0
+    clusterName: comprehensive-cluster
+    
+    # API Server configuration
+    apiServer:
+      timeoutForControlPlane: 4m0s
+      extraArgs:
+        # Admission plugins
+        enable-admission-plugins: NodeRestriction,MutatingAdmissionWebhook,ValidatingAdmissionWebhook,PodSecurityPolicy,ResourceQuota,LimitRanger
+        disable-admission-plugins: ""
+        
+        # Auditing
+        audit-log-path: /var/log/audit.log
+        audit-log-maxage: "30"
+        audit-log-maxbackup: "10"
+        audit-log-maxsize: "100"
+        audit-policy-file: /etc/kubernetes/audit-policy.yaml
+        
+        # Security
+        anonymous-auth: "false"
+        basic-auth-file: ""
+        token-auth-file: ""
+        
+        # API versioning
+        runtime-config: api/all=true
+        
+        # Service account configuration
+        service-account-key-file: /etc/kubernetes/pki/sa.pub
+        service-account-signing-key-file: /etc/kubernetes/pki/sa.key
+        service-account-issuer: https://kubernetes.default.svc.cluster.local
+        
+        # OIDC configuration (uncomment if using OIDC)
+        # oidc-issuer-url: https://your-oidc-provider.com
+        # oidc-client-id: kubernetes
+        # oidc-username-claim: email
+        # oidc-groups-claim: groups
+        
+        # Encryption at rest (uncomment if needed)
+        # encryption-provider-config: /etc/kubernetes/encryption-config.yaml
+        
+        # Request timeout
+        request-timeout: 1m0s
+        
+        # Max requests inflight
+        max-requests-inflight: 400
+        max-mutating-requests-inflight: 200
+        
+        # Profiling and debugging
+        profiling: "false"
+        enable-bootstrap-token-auth: "true"
+        
+        # Feature gates
+        feature-gates: CSIMigration=true,EphemeralContainers=true
+      
+      extraVolumes:
+        - name: audit-policy
+          hostPath: /etc/kubernetes/audit-policy.yaml
+          mountPath: /etc/kubernetes/audit-policy.yaml
+          readOnly: true
+          pathType: File
+        - name: audit-log
+          hostPath: /var/log/audit.log
+          mountPath: /var/log/audit.log
+          readOnly: false
+          pathType: FileOrCreate
+      
+      certSANs:
+        - "localhost"
+        - "127.0.0.1"
+        - "0.0.0.0"
+        # Add additional SANs if needed
+        # - "your-domain.com"
+        # - "10.0.0.100"
+    
+    # Controller Manager configuration
+    controllerManager:
+      extraArgs:
+        bind-address: 0.0.0.0
+        port: "10257"
+        secure-port: "10257"
+        
+        # Leader election
+        leader-elect: "true"
+        leader-elect-lease-duration: 15s
+        leader-elect-renew-deadline: 10s
+        leader-elect-retry-period: 2s
+        
+        # Node management
+        node-monitor-period: 5s
+        node-monitor-grace-period: 40s
+        pod-eviction-timeout: 5m0s
+        
+        # Resource quotas and limits
+        kube-api-qps: 20
+        kube-api-burst: 30
+        
+        # Garbage collection
+        terminated-pod-gc-threshold: "12500"
+        
+        # Service account token controller
+        service-account-private-key-file: /etc/kubernetes/pki/sa.key
+        root-ca-file: /etc/kubernetes/pki/ca.crt
+        
+        # Certificate management
+        cluster-signing-cert-file: /etc/kubernetes/pki/ca.crt
+        cluster-signing-key-file: /etc/kubernetes/pki/ca.key
+        
+        # Feature gates
+        feature-gates: CSIMigration=true,EphemeralContainers=true
+        
+        # Profiling
+        profiling: "false"
+        
+        # Metrics
+        bind-address: 0.0.0.0
+    
+    # Scheduler configuration
+    scheduler:
+      extraArgs:
+        bind-address: 0.0.0.0
+        port: "10259"
+        secure-port: "10259"
+        
+        # Leader election
+        leader-elect: "true"
+        leader-elect-lease-duration: 15s
+        leader-elect-renew-deadline: 10s
+        leader-elect-retry-period: 2s
+        
+        # Performance tuning
+        kube-api-qps: 50
+        kube-api-burst: 100
+        
+        # Profiling
+        profiling: "false"
+        
+        # Feature gates
+        feature-gates: CSIMigration=true,EphemeralContainers=true
+        
+        # Scheduling configuration
+        # config: /etc/kubernetes/scheduler-config.yaml
+    
+    # Etcd configuration
+    etcd:
+      local:
+        dataDir: /var/lib/etcd
+        extraArgs:
+          listen-metrics-urls: http://0.0.0.0:2381
+          # Backup and snapshot settings
+          snapshot-count: "10000"
+          heartbeat-interval: "100"
+          election-timeout: "1000"
+          # Quota settings
+          quota-backend-bytes: "2147483648"  # 2GB
+          # Auto-compaction
+          auto-compaction-retention: "1"
+          auto-compaction-mode: periodic
+          # Debugging
+          log-level: info
+        serverCertSANs:
+          - "localhost"
+          - "127.0.0.1"
+        peerCertSANs:
+          - "localhost"
+          - "127.0.0.1"
+    
+    # DNS configuration
+    dns:
+      type: CoreDNS
+    
+    # Certificate directory
+    certificatesDir: /etc/kubernetes/pki
+    
+    # Image repository configuration
+    imageRepository: k8s.gcr.io
+    
+    # Control plane endpoint
+    # controlPlaneEndpoint: "localhost:6443"
+
+  # Kubelet Configuration
+  - |
+    kind: KubeletConfiguration
+    metadata:
+      name: config
+    
+    # Basic configuration
+    port: 10250
+    readOnlyPort: 0
+    
+    # Authentication and authorization
+    authentication:
+      anonymous:
+        enabled: false
+      webhook:
+        enabled: true
+      x509:
+        clientCAFile: /etc/kubernetes/pki/ca.crt
+    authorization:
+      mode: Webhook
+    
+    # TLS configuration
+    serverTLSBootstrap: true
+    rotateCertificates: true
+    tlsCertFile: ""
+    tlsPrivateKeyFile: ""
+    
+    # CGroup configuration
+    cgroupDriver: systemd
+    cgroupRoot: "/"
+    cgroupsPerQOS: true
+    enforceNodeAllocatable:
+      - pods
+      - system-reserved
+      - kube-reserved
+    
+    # Resource management
+    maxPods: 110
+    systemReserved:
+      cpu: "100m"
+      memory: "100Mi"
+      ephemeral-storage: "1Gi"
+      pid: "1000"
+    kubeReserved:
+      cpu: "100m"
+      memory: "100Mi"
+      ephemeral-storage: "1Gi"
+      pid: "1000"
+    
+    # Eviction policies
+    evictionHard:
+      memory.available: "100Mi"
+      nodefs.available: "10%"
+      nodefs.inodesFree: "5%"
+      imagefs.available: "15%"
+      imagefs.inodesFree: "10%"
+      pid.available: "10%"
+    evictionSoft:
+      memory.available: "200Mi"
+      nodefs.available: "15%"
+      nodefs.inodesFree: "10%"
+      imagefs.available: "20%"
+      imagefs.inodesFree: "15%"
+    evictionSoftGracePeriod:
+      memory.available: "1m30s"
+      nodefs.available: "1m30s"
+      nodefs.inodesFree: "1m30s"
+      imagefs.available: "1m30s"
+      imagefs.inodesFree: "1m30s"
+    evictionMaxPodGracePeriod: 60
+    evictionMinimumReclaim:
+      memory.available: "50Mi"
+      nodefs.available: "5%"
+      nodefs.inodesFree: "5%"
+      imagefs.available: "5%"
+      imagefs.inodesFree: "5%"
+    
+    # Container runtime
+    containerRuntimeEndpoint: "unix:///var/run/containerd/containerd.sock"
+    runtimeRequestTimeout: 2m0s
+    
+    # Image management
+    imageGCHighThresholdPercent: 85
+    imageGCLowThresholdPercent: 80
+    imageMinimumGCAge: 2m0s
+    
+    # Networking
+    clusterDNS:
+      - 10.96.0.10
+    clusterDomain: cluster.local
+    resolvConf: /etc/resolv.conf
+    
+    # Logging
+    logging:
+      format: text
+      flushFrequency: 5s
+      verbosity: 2
+    
+    # Health and monitoring
+    healthzBindAddress: 127.0.0.1
+    healthzPort: 10248
+    
+    # Sync frequency
+    syncFrequency: 1m0s
+    fileCheckFrequency: 20s
+    httpCheckFrequency: 20s
+    nodeStatusUpdateFrequency: 10s
+    nodeStatusReportFrequency: 5m0s
+    nodeLeaseDurationSeconds: 40
+    
+    # Security
+    protectKernelDefaults: false
+    makeIPTablesUtilChains: true
+    
+    # Feature gates
+    featureGates:
+      CSIMigration: true
+      EphemeralContainers: true
+      LocalStorageCapacityIsolation: true
+      ConfigurableFSGroupPolicy: true
+      CSIServiceAccountToken: true
+    
+    # Volume plugin directory
+    volumePluginDir: /usr/libexec/kubernetes/kubelet-plugins/volume/exec/
+    
+    # Pod configuration
+    podPidsLimit: 2048
+    enableControllerAttachDetach: true
+    hairpinMode: promiscuous-bridge
+    
+    # Garbage collection
+    containerGCPolicy:
+      minAge: 0s
+      maxPerPodContainer: 1
+      maxContainers: -1
+
+  # Kube Proxy Configuration
+  - |
+    kind: KubeProxyConfiguration
+    metadata:
+      name: config
+    
+    # Basic configuration
+    bindAddress: 0.0.0.0
+    healthzBindAddress: 0.0.0.0:10256
+    metricsBindAddress: 0.0.0.0:10249
+    
+    # Proxy mode configuration
+    mode: iptables
+    
+    # Cluster configuration
+    clusterCIDR: "10.244.0.0/16"
+    
+    # IPTables configuration
+    iptables:
+      masqueradeAll: false
+      masqueradeBit: 14
+      minSyncPeriod: 0s
+      syncPeriod: 30s
+    
+    # IPVS configuration (if using IPVS mode)
+    ipvs:
+      excludeCIDRs: []
+      minSyncPeriod: 0s
+      scheduler: "rr"
+      strictARP: false
+      syncPeriod: 30s
+      tcpFinTimeout: 0s
+      tcpTimeout: 0s
+      udpTimeout: 0s
+    
+    # Connection tracking
+    conntrack:
+      maxPerCore: 32768
+      min: 131072
+      tcpCloseWaitTimeout: 1h0m0s
+      tcpEstablishedTimeout: 24h0m0s
+    
+    # Node port configuration
+    nodePortAddresses: []
+    
+    # Feature gates
+    featureGates:
+      EndpointSliceProxying: true
+      ServiceInternalTrafficPolicy: true
+    
+    # Hostname override
+    # hostnameOverride: ""
+    
+    # Client connection configuration
+    clientConnection:
+      acceptContentTypes: ""
+      burst: 10
+      contentType: application/vnd.kubernetes.protobuf
+      kubeconfig: /var/lib/kube-proxy/kubeconfig.conf
+      qps: 5
+    
+    # Configuration synchronization
+    configSyncPeriod: 15m0s
+    
+    # Logging
+    logging:
+      format: text
+      flushFrequency: 5s
+      verbosity: 2
+
+  # Init Configuration (for control plane nodes)
+  - |
+    kind: InitConfiguration
+    metadata:
+      name: config
+    
+    # Local API endpoint
+    localAPIEndpoint:
+      advertiseAddress: ""
+      bindPort: 6443
+    
+    # Node registration options
+    nodeRegistration:
+      criSocket: "unix:///var/run/containerd/containerd.sock"
+      kubeletExtraArgs:
+        node-labels: "node-type=control-plane,zone=zone-a"
+        system-reserved: "cpu=100m,memory=100Mi,ephemeral-storage=1Gi,pid=1000"
+        kube-reserved: "cpu=100m,memory=100Mi,ephemeral-storage=1Gi,pid=1000"
+        eviction-hard: "memory.available<100Mi,nodefs.available<10%,nodefs.inodesFree<5%,imagefs.available<15%,pid.available<10%"
+        max-pods: "110"
+        cluster-dns: "10.96.0.10"
+        cluster-domain: "cluster.local"
+        cgroup-driver: "systemd"
+        feature-gates: "CSIMigration=true,EphemeralContainers=true"
+        container-runtime-endpoint: "unix:///var/run/containerd/containerd.sock"
+        runtime-request-timeout: "2m"
+        image-gc-high-threshold: "85"
+        image-gc-low-threshold: "80"
+        image-minimum-gc-age: "2m"
+        pod-pids-limit: "2048"
+      
+      # Taints (uncomment to add taints to control plane)
+      # taints:
+      #   - key: node-role.kubernetes.io/control-plane
+      #     effect: NoSchedule
+      #   - key: node.kubernetes.io/unschedulable
+      #     effect: NoSchedule
+      
+      # Ignore preflight errors (use with caution)
+      # ignorePreflightErrors:
+      #   - IsPrivilegedUser
+      #   - Swap
+      #   - NumCPU
+      #   - Mem
+
+  # Join Configuration (for worker nodes)
+  - |
+    kind: JoinConfiguration
+    metadata:
+      name: config
+    
+    # Node registration options for worker nodes
+    nodeRegistration:
+      criSocket: "unix:///var/run/containerd/containerd.sock"
+      kubeletExtraArgs:
+        node-labels: "node-type=worker,zone=zone-a"
+        system-reserved: "cpu=100m,memory=100Mi,ephemeral-storage=1Gi,pid=1000"
+        kube-reserved: "cpu=100m,memory=100Mi,ephemeral-storage=1Gi,pid=1000"
+        eviction-hard: "memory.available<100Mi,nodefs.available<10%,nodefs.inodesFree<5%,imagefs.available<15%,pid.available<10%"
+        max-pods: "110"
+        cluster-dns: "10.96.0.10"
+        cluster-domain: "cluster.local"
+        cgroup-driver: "systemd"
+        feature-gates: "CSIMigration=true,EphemeralContainers=true"
+        container-runtime-endpoint: "unix:///var/run/containerd/containerd.sock"
+        runtime-request-timeout: "2m"
+        image-gc-high-threshold: "85"
+        image-gc-low-threshold: "80"
+        pod-pids-limit: "2048"
+      
+      # Ignore preflight errors (use with caution)
+      # ignorePreflightErrors:
+      #   - IsPrivilegedUser
+      #   - Swap
+
+# =============================================================================
+# CONTAINER RUNTIME CONFIGURATION (CONTAINERD)
+# =============================================================================
+
+# Container runtime configuration patches
+containerdConfigPatches:
+- |
+  version = 2
+  
+  # Root directory for containerd metadata
+  root = "/var/lib/containerd"
+  
+  # State directory for containerd state
+  state = "/run/containerd"
+  
+  # Plugin directory
+  plugin_dir = ""
+  
+  # Disabled plugins
+  disabled_plugins = []
+  
+  # Required plugins
+  required_plugins = []
+  
+  # OOM score adjustment
+  oom_score = 0
+  
+  # CGroup driver
+  [plugins."io.containerd.grpc.v1.cri"]
+    stream_server_address = "127.0.0.1"
+    stream_server_port = "0"
+    stream_idle_timeout = "4h0m0s"
+    enable_selinux = false
+    selinux_category_range = 1024
+    sandbox_image = "k8s.gcr.io/pause:3.7"
+    stats_collect_period = 10
+    systemd_cgroup = true
+    enable_tls_streaming = false
+    max_container_log_line_size = 16384
+    disable_cgroup = false
+    disable_apparmor = false
+    restrict_oom_score_adj = false
+    max_concurrent_downloads = 3
+    disable_proc_mount = false
+    unset_seccomp_profile = ""
+    tolerate_missing_hugetlb_controller = true
+    disable_hugetlb_controller = true
+    ignore_image_defined_volumes = false
+    netns_mounts_under_state_dir = false
+    
+    # Default runtime
+    [plugins."io.containerd.grpc.v1.cri".containerd]
+      snapshotter = "overlayfs"
+      default_runtime_name = "runc"
+      no_pivot = false
+      disable_snapshot_annotations = true
+      discard_unpacked_layers = false
+      
+      # Default runtime configuration
+      [plugins."io.containerd.grpc.v1.cri".containerd.default_runtime]
+        runtime_type = ""
+        runtime_engine = ""
+        runtime_root = ""
+        privileged_without_host_devices = false
+        base_runtime_spec = ""
+      
+      # Runtime configurations
+      [plugins."io.containerd.grpc.v1.cri".containerd.runtimes]
+        [plugins."io.containerd.grpc.v1.cri".containerd.runtimes.runc]
+          runtime_type = "io.containerd.runc.v2"
+          runtime_engine = ""
+          runtime_root = ""
+          privileged_without_host_devices = false
+          base_runtime_spec = ""
+          [plugins."io.containerd.grpc.v1.cri".containerd.runtimes.runc.options]
+            SystemdCgroup = true
+            BinaryName = "runc"
+            Root = ""
+            CriuImagePath = ""
+            CriuPath = ""
+            CriuWorkPath = ""
+            IoGid = 0
+            IoUid = 0
+            NoNewKeyring = false
+            NoPivotRoot = false
+            ShimCgroup = ""
+    
+    # CNI configuration
+    [plugins."io.containerd.grpc.v1.cri".cni]
+      bin_dir = "/opt/cni/bin"
+      conf_dir = "/etc/cni/net.d"
+      max_conf_num = 1
+      conf_template = ""
+    
+    # Image configuration
+    [plugins."io.containerd.grpc.v1.cri".image_decryption]
+      key_model = ""
+    
+    # Registry configuration
+    [plugins."io.containerd.grpc.v1.cri".registry]
+      config_path = ""
+      
+      # Registry mirrors for improved image pulling performance
+      [plugins."io.containerd.grpc.v1.cri".registry.mirrors]
+        [plugins."io.containerd.grpc.v1.cri".registry.mirrors."docker.io"]
+          endpoint = [
+            "https://dockerhub.azk8s.cn",
+            "https://docker.mirrors.ustc.edu.cn", 
+            "https://hub-mirror.c.163.com",
+            "https://registry.docker-cn.com",
+            "https://registry-1.docker.io"
+          ]
+        
+        [plugins."io.containerd.grpc.v1.cri".registry.mirrors."k8s.gcr.io"]
+          endpoint = [
+            "https://k8s-gcr.azk8s.cn",
+            "https://registry.aliyuncs.com/k8sxio"
+          ]
+        
+        [plugins."io.containerd.grpc.v1.cri".registry.mirrors."registry.k8s.io"]
+          endpoint = [
+            "https://k8s-gcr.azk8s.cn",
+            "https://registry.aliyuncs.com/k8sxio"
+          ]
+        
+        [plugins."io.containerd.grpc.v1.cri".registry.mirrors."gcr.io"]
+          endpoint = [
+            "https://gcr.azk8s.cn",
+            "https://registry.aliyuncs.com"
+          ]
+        
+        [plugins."io.containerd.grpc.v1.cri".registry.mirrors."quay.io"]
+          endpoint = [
+            "https://quay.azk8s.cn",
+            "https://quay-mirror.qiniu.com"
+          ]
+        
+        [plugins."io.containerd.grpc.v1.cri".registry.mirrors."ghcr.io"]
+          endpoint = [
+            "https://ghcr.nju.edu.cn"
+          ]
+        
+        # Private registry mirror (uncomment if needed)
+        # [plugins."io.containerd.grpc.v1.cri".registry.mirrors."your-private-registry.com"]
+        #   endpoint = ["https://your-private-registry.com"]
+      
+      # Registry configurations for authentication and TLS
+      [plugins."io.containerd.grpc.v1.cri".registry.configs]
+        [plugins."io.containerd.grpc.v1.cri".registry.configs."dockerhub.azk8s.cn".tls]
+          insecure_skip_verify = false
+          ca_file = ""
+          cert_file = ""
+          key_file = ""
+        
+        [plugins."io.containerd.grpc.v1.cri".registry.configs."docker.mirrors.ustc.edu.cn".tls]
+          insecure_skip_verify = false
+        
+        [plugins."io.containerd.grpc.v1.cri".registry.configs."hub-mirror.c.163.com".tls]
+          insecure_skip_verify = false
+        
+        [plugins."io.containerd.grpc.v1.cri".registry.configs."registry.docker-cn.com".tls]
+          insecure_skip_verify = false
+        
+        # Private registry authentication (uncomment if needed)
+        # [plugins."io.containerd.grpc.v1.cri".registry.configs."your-private-registry.com".auth]
+        #   username = "your-username"
+        #   password = "your-password"
+        #   auth = ""
+        #   identitytoken = ""
+        # [plugins."io.containerd.grpc.v1.cri".registry.configs."your-private-registry.com".tls]
+        #   insecure_skip_verify = true
+        #   ca_file = "/path/to/ca.crt"
+        #   cert_file = "/path/to/cert.crt"
+        #   key_file = "/path/to/cert.key"
+    
+    # Sandbox configuration
+    [plugins."io.containerd.grpc.v1.cri".sandbox]
+      sandbox_size = "1073741824"  # 1GB
+    
+    # X509 key pair streaming
+    [plugins."io.containerd.grpc.v1.cri".x509_key_pair_streaming]
+      tls_cert_file = ""
+      tls_private_key_file = ""
+  
+  # Metrics configuration
+  [metrics]
+    address = ""
+    grpc_histogram = false
+  
+  # Debug configuration
+  [debug]
+    address = ""
+    uid = 0
+    gid = 0
+    level = ""
+  
+  # gRPC configuration
+  [grpc]
+    address = "/run/containerd/containerd.sock"
+    tcp_address = ""
+    tcp_tls_cert = ""
+    tcp_tls_key = ""
+    uid = 0
+    gid = 0
+    max_recv_message_size = 16777216
+    max_send_message_size = 16777216
+  
+  # TTRPC configuration
+  [ttrpc]
+    address = ""
+    uid = 0
+    gid = 0
+  
+  # Proxy plugins
+  [proxy_plugins]
+  
+  # Plugin configurations
+  [plugins]
+    [plugins."io.containerd.gc.v1.scheduler"]
+      pause_threshold = 0.02
+      deletion_threshold = 0
+      mutation_threshold = 100
+      schedule_delay = "0s"
+      startup_delay = "100ms"
+    
+    [plugins."io.containerd.service.v1.diff-service"]
+      default = ["walking"]
+    
+    [plugins."io.containerd.internal.v1.restart"]
+      interval = "10s"
+    
+    [plugins."io.containerd.runtime.v1.linux"]
+      shim = "containerd-shim"
+      runtime = "runc"
+      runtime_root = ""
+      no_shim = false
+      shim_debug = false
+    
+    [plugins."io.containerd.runtime.v2.task"]
+      platforms = ["linux/amd64"]
+    
+    [plugins."io.containerd.monitor.v1.cgroups"]
+      no_prometheus = false
+
+# =============================================================================
+# USAGE EXAMPLES AND DOCUMENTATION
+# =============================================================================
+
+# Usage Examples:
+# 
+# 1. Create cluster with this comprehensive configuration:
+#    kind create cluster --config=kind-config.yaml
+#
+# 2. Create cluster with specific name:
+#    kind create cluster --config=kind-config.yaml --name=comprehensive-cluster
+#
+# 3. Create cluster and retain nodes on failure (for debugging):
+#    kind create cluster --config=kind-config.yaml --retain
+#
+# 4. Create cluster with specific log level:
+#    kind create cluster --config=kind-config.yaml --loglevel=debug
+#
+# 5. Create cluster and wait for ready:
+#    kind create cluster --config=kind-config.yaml --wait=5m
+#
+# 6. Delete cluster:
+#    kind delete cluster --name=comprehensive-cluster
+#
+# 7. List all clusters:
+#    kind get clusters
+#
+# 8. Get cluster information:
+#    kubectl cluster-info --context kind-comprehensive-cluster
+#
+# 9. Get all nodes with labels:
+#    kubectl get nodes --show-labels
+#
+# 10. Export cluster logs for debugging:
+#     kind export logs /tmp/kind-logs --name=comprehensive-cluster
+
+# =============================================================================
+# COMMON CONFIGURATION SCENARIOS
+# =============================================================================
+
+# 1. SINGLE NODE CLUSTER (CONTROL-PLANE ONLY):
+#    Comment out all worker nodes in the nodes section
+#    Uncomment control-plane taints if you want to schedule pods on control-plane
+#
+# 2. MULTI-MASTER HA CLUSTER:
+#    Uncomment additional control-plane nodes (minimum 3 for HA)
+#    Ensure odd number of control-plane nodes
+#    Consider using external load balancer for production
+#
+# 3. INGRESS-READY CLUSTER:
+#    Ensure control-plane has extraPortMappings for ports 80 and 443
+#    Ensure node has label "ingress-ready=true"
+#    Install ingress controller after cluster creation:
+#    kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/main/deploy/static/provider/kind/deploy.yaml
+#
+# 4. GPU-ENABLED CLUSTER:
+#    Uncomment GPU worker node
+#    Install NVIDIA device plugin after cluster creation:
+#    kubectl create -f https://raw.githubusercontent.com/NVIDIA/k8s-device-plugin/main/nvidia-device-plugin.yml
+#
+# 5. CUSTOM CNI (CALICO/CILIUM):
+#    Set networking.disableDefaultCNI: true
+#    Install your preferred CNI after cluster creation
+#
+# 6. PERSISTENT STORAGE:
+#    Add hostPath mounts to nodes
+#    Consider using local-path-provisioner or other storage solutions
+#
+# 7. PRIVATE REGISTRY INTEGRATION:
+#    Configure containerd registry mirrors and authentication
+#    Use kubectl create secret docker-registry for pull secrets
+#
+# 8. MONITORING SETUP:
+#    Use extraPortMappings for metrics endpoints
+#    Install Prometheus/Grafana stack after cluster creation
+#
+# 9. SERVICE MESH (ISTIO/LINKERD):
+#    Ensure adequate resources are reserved
+#    Consider enabling additional feature gates
+#
+# 10. CI/CD INTEGRATION:
+#     Use appropriate node labels for job scheduling
+#     Configure resource reservations for build agents
+
+# =============================================================================
+# TROUBLESHOOTING GUIDE
+# =============================================================================
+
+# COMMON ISSUES AND SOLUTIONS:
+#
+# 1. CLUSTER CREATION FAILS:
+#    - Check Docker is running: docker ps
+#    - Verify Kind version: kind version
+#    - Check available resources: docker system df
+#    - Review configuration syntax: yaml validation
+#    - Check for port conflicts: netstat -tuln
+#
+# 2. NODES NOT READY:
+#    - Check node status: kubectl get nodes -o wide
+#    - View node conditions: kubectl describe nodes
+#    - Check kubelet logs: kind export logs or docker logs <node-name>
+#    - Verify CNI installation: kubectl get pods -n kube-system
+#
+# 3. POD SCHEDULING ISSUES:
+#    - Check node resources: kubectl top nodes
+#    - Verify node labels: kubectl get nodes --show-labels
+#    - Check taints and tolerations: kubectl describe nodes
+#    - Review resource requests: kubectl describe pod <pod-name>
+#
+# 4. NETWORK CONNECTIVITY ISSUES:
+#    - Test cluster DNS: nslookup kubernetes.default
+#    - Check service endpoints: kubectl get endpoints
+#    - Verify network policies: kubectl get networkpolicies
+#    - Test pod-to-pod connectivity: kubectl exec -it <pod> -- ping <target>
+#
+# 5. STORAGE ISSUES:
+#    - Check persistent volumes: kubectl get pv,pvc
+#    - Verify storage class: kubectl get storageclass
+#    - Review mount permissions: kubectl exec -it <pod> -- ls -la /mount/path
+#
+# 6. INGRESS NOT WORKING:
+#    - Verify ingress controller: kubectl get pods -n ingress-nginx
+#    - Check port mappings: docker ps (look for port 80/443)
+#    - Test load balancer: curl -H "Host: example.com" localhost
+#
+# 7. RESOURCE EXHAUSTION:
+#    - Check Docker resources: docker system df
+#    - Monitor node resources: kubectl top nodes
+#    - Review eviction policies in kubelet configuration
+#    - Clean up unused resources: docker system prune
+#
+# 8. CERTIFICATE ISSUES:
+#    - Check certificate expiration: kubectl get csr
+#    - Verify CA certificates: openssl x509 -in /etc/kubernetes/pki/ca.crt -text
+#    - Review certificate SANs in API server configuration
+#
+# 9. IMAGE PULL ISSUES:
+#    - Verify registry mirrors in containerd configuration
+#    - Check image pull secrets: kubectl get secrets
+#    - Test registry connectivity: docker pull <image>
+#    - Review containerd logs: journalctl -u containerd
+#
+# 10. PERFORMANCE ISSUES:
+#     - Monitor resource usage: kubectl top nodes/pods
+#     - Review resource limits and requests
+#     - Check disk I/O: iostat -x 1
+#     - Optimize garbage collection settings
+
+# =============================================================================
+# SECURITY CONSIDERATIONS
+# =============================================================================
+
+# SECURITY BEST PRACTICES:
+#
+# 1. NETWORK SECURITY:
+#    - Use network policies to restrict pod-to-pod communication
+#    - Implement proper ingress rules and TLS termination
+#    - Consider service mesh for advanced traffic management
+#
+# 2. RBAC (ROLE-BASED ACCESS CONTROL):
+#    - Create specific roles and role bindings
+#    - Follow principle of least privilege
+#    - Regularly audit RBAC permissions
+#
+# 3. POD SECURITY:
+#    - Use Pod Security Standards (restricted/baseline/privileged)
+#    - Implement security contexts and seccomp profiles
+#    - Run containers as non-root users when possible
+#
+# 4. SECRETS MANAGEMENT:
+#    - Use Kubernetes secrets for sensitive data
+#    - Consider external secret management solutions
+#    - Encrypt secrets at rest
+#
+# 5. IMAGE SECURITY:
+#    - Scan container images for vulnerabilities
+#    - Use trusted registry mirrors
+#    - Implement image signing and verification
+#
+# 6. AUDIT LOGGING:
+#    - Enable API server audit logging
+#    - Monitor cluster activities
+#    - Set up log aggregation and analysis
+#
+# 7. RESOURCE LIMITS:
+#    - Set appropriate resource quotas and limits
+#    - Implement namespace-based resource management
+#    - Monitor resource consumption
+#
+# 8. UPDATE MANAGEMENT:
+#    - Keep Kubernetes version up to date
+#    - Regularly update node images
+#    - Apply security patches promptly
+
+# =============================================================================
+# PERFORMANCE TUNING
+# =============================================================================
+
+# PERFORMANCE OPTIMIZATION TIPS:
+#
+# 1. RESOURCE ALLOCATION:
+#    - Adjust system and kube reserved resources based on workload
+#    - Configure appropriate eviction thresholds
+#    - Monitor and tune garbage collection settings
+#
+# 2. NETWORKING:
+#    - Choose appropriate CNI plugin for your use case
+#    - Optimize service proxy mode (iptables vs ipvs)
+#    - Configure connection tracking parameters
+#
+# 3. STORAGE:
+#    - Use appropriate storage drivers and configurations
+#    - Consider SSD storage for etcd and high-IOPS workloads
+#    - Optimize container image layers and sizes
+#
+# 4. CONTAINER RUNTIME:
+#    - Tune containerd configuration for your workload
+#    - Optimize image pulling with registry mirrors
+#    - Configure appropriate runtime security settings
+#
+# 5. ETCD:
+#    - Monitor etcd performance metrics
+#    - Configure appropriate snapshot and compaction settings
+#    - Consider etcd cluster topology for HA deployments
+#
+# 6. SCHEDULER:
+#    - Use appropriate scheduling policies and priorities
+#    - Configure resource-aware scheduling
+#    - Consider custom schedulers for specific workloads
+
+# =============================================================================
+# MONITORING AND OBSERVABILITY
+# =============================================================================
+
+# MONITORING SETUP:
+#
+# 1. METRICS COLLECTION:
+#    - Install Prometheus for metrics collection
+#    - Configure node-exporter for node metrics
+#    - Set up cAdvisor for container metrics
+#
+# 2. VISUALIZATION:
+#    - Deploy Grafana for metrics visualization
+#    - Use pre-built Kubernetes dashboards
+#    - Create custom dashboards for application metrics
+#
+# 3. LOGGING:
+#    - Set up centralized logging with ELK or similar stack
+#    - Configure log rotation and retention policies
+#    - Implement structured logging in applications
+#
+# 4. TRACING:
+#    - Consider distributed tracing with Jaeger or Zipkin
+#    - Implement application performance monitoring
+#    - Use service mesh for automatic trace collection
+#
+# 5. ALERTING:
+#    - Configure Prometheus AlertManager
+#    - Set up appropriate alert rules
+#    - Integrate with notification systems (Slack, PagerDuty, etc.)
+#
+# 6. HEALTH CHECKS:
+#    - Implement proper liveness and readiness probes
+#    - Monitor cluster component health
+#    - Set up synthetic monitoring for critical services
+
+# =============================================================================
+# DEVELOPMENT WORKFLOW INTEGRATION
+# =============================================================================
+
+# CI/CD INTEGRATION:
+#
+# 1. BUILD AUTOMATION:
+#    - Integrate with Jenkins, GitLab CI, or GitHub Actions
+#    - Use skaffold for continuous development
+#    - Implement automated testing pipelines
+#
+# 2. DEPLOYMENT STRATEGIES:
+#    - Blue-green deployments
+#    - Canary releases
+#    - Rolling updates with proper health checks
+#
+# 3. ENVIRONMENT MANAGEMENT:
+#    - Use namespaces for environment separation
+#    - Implement gitops workflows with ArgoCD or Flux
+#    - Version control infrastructure configurations
+#
+# 4. DEBUGGING AND DEVELOPMENT:
+#    - Use kubectl port-forward for local access
+#    - Implement remote debugging capabilities
+#    - Set up development-specific configurations
+
+# =============================================================================
+# END OF CONFIGURATION
+# =============================================================================
