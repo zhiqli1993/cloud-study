@@ -9,10 +9,10 @@ cloud-study/
 ├── README.md                          # 项目主文档
 ├── containerd-config-patch.toml       # Containerd 配置补丁
 ├── kind/                              # Kind (Kubernetes in Docker) 相关配置
-│   ├── install/                       # Kind 安装脚本
+│   ├── scripts/                       # Kind 安装脚本
 │   └── templates/                     # Kind 集群配置模板
 ├── istio/                             # Istio 服务网格相关配置
-│   └── install/                       # Istio 安装脚本
+│   └── scripts/                       # Istio 安装脚本
 └── docker-registry-proxy/             # Docker 镜像仓库代理配置
     ├── configs/                       # 代理配置文件
     ├── manifests/                     # Kubernetes 清单文件
@@ -39,10 +39,10 @@ cloud-study/
 2. **安装 Kind（推荐首选）**
    ```bash
    # Linux/macOS
-   cd kind/install && chmod +x install-kind.sh && ./install-kind.sh
+   cd kind/scripts && chmod +x install-kind.sh && ./install-kind.sh
    
    # Windows
-   cd kind/install && install-kind.bat
+   cd kind/scripts && install-kind.bat
    ```
 
 3. **创建 Kubernetes 集群**
@@ -93,13 +93,13 @@ cloud-study/
 **快速安装**:
 ```bash
 # Linux/macOS
-cd istio/install && chmod +x install-istio.sh && ./install-istio.sh
+cd istio/scripts && chmod +x install-istio.sh && ./install-istio.sh
 
 # Windows  
-cd istio/install && install-istio.bat
+cd istio/scripts && install-istio.bat
 ```
 
-**详细文档**: [istio/install/README.md](istio/install/README.md)
+**详细文档**: [istio/scripts/README.md](istio/scripts/README.md)
 
 ### 3. Docker Registry 代理
 
