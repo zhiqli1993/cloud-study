@@ -87,23 +87,34 @@ if %errorlevel% equ 0 (
     if "!CURRENT_VERSION!"=="not_installed" set "CURRENT_VERSION=unknown"
     echo %INFO_PREFIX% Current istioctl version: !CURRENT_VERSION!
     
-    if "!CURRENT_VERSION!"=="!ISTIO_VERSION!" (
-        echo %SUCCESS_PREFIX% istioctl !ISTIO_VERSION! is already installed
+    :: Normalize version strings for comparison (remove 'v' prefix if present)
+    set "NORMALIZED_CURRENT=!CURRENT_VERSION!"
+    set "NORMALIZED_TARGET=!ISTIO_VERSION!"
+    if "!NORMALIZED_CURRENT:~0,1!"=="v" set "NORMALIZED_CURRENT=!NORMALIZED_CURRENT:~1!"
+    if "!NORMALIZED_TARGET:~0,1!"=="v" set "NORMALIZED_TARGET=!NORMALIZED_TARGET:~1!"
+    
+    if "!NORMALIZED_CURRENT!"=="!NORMALIZED_TARGET!" (
+        echo %SUCCESS_PREFIX% istioctl !ISTIO_VERSION! is already installed and up to date
         goto :ask_cluster_install
-    )
-    if "v!CURRENT_VERSION!"=="!ISTIO_VERSION!" (
-        echo %SUCCESS_PREFIX% istioctl !ISTIO_VERSION! is already installed
-        goto :ask_cluster_install
+    ) else (
+        echo %INFO_PREFIX% Upgrading istioctl from !CURRENT_VERSION! to !ISTIO_VERSION!
     )
 ) else (
     echo %INFO_PREFIX% istioctl is not currently installed
 )
 
-:: Install or upgrade
+:: Install or upgrade only if versions don't match
+set "NORMALIZED_CURRENT=!CURRENT_VERSION!"
+set "NORMALIZED_TARGET=!ISTIO_VERSION!"
+if "!NORMALIZED_CURRENT:~0,1!"=="v" set "NORMALIZED_CURRENT=!NORMALIZED_CURRENT:~1!"
+if "!NORMALIZED_TARGET:~0,1!"=="v" set "NORMALIZED_TARGET=!NORMALIZED_TARGET:~1!"
+
 if "!CURRENT_VERSION!"=="not_installed" (
     echo %INFO_PREFIX% Installing istioctl !ISTIO_VERSION!...
-) else (
+) else if "!NORMALIZED_CURRENT!" neq "!NORMALIZED_TARGET!" (
     echo %INFO_PREFIX% Upgrading istioctl from !CURRENT_VERSION! to !ISTIO_VERSION!...
+) else (
+    goto :ask_cluster_install
 )
 
 :: Create download URL
@@ -190,7 +201,7 @@ echo %SUCCESS_PREFIX% istioctl !ISTIO_VERSION! installed successfully to %INSTAL
 :: Verify installation
 where istioctl >nul 2>&1
 if %errorlevel% equ 0 (
-    for /f "tokens=*" %%i in ('istioctl version --client --short 2^>nul') do (
+    for /f "tokens=*" %%i in ('istioctl version --short 2^>nul') do (
         for /f "tokens=1,2,3 delims=." %%a in ("%%i") do (
             if "%%a" neq "" if "%%b" neq "" if "%%c" neq "" (
                 set "INSTALLED_VERSION=%%a.%%b.%%c"

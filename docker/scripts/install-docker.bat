@@ -1,35 +1,35 @@
 @echo off
 setlocal enabledelayedexpansion
 
-:: Docker Windows 安装脚本
-:: 使用方法: install-docker.bat
+:: Docker Windows Installation Script
+:: Usage: install-docker.bat
 
-:: 输出文本标签 (cmd 不支持颜色)
-set "INFO_PREFIX=[信息]"
-set "SUCCESS_PREFIX=[成功]"
-set "WARNING_PREFIX=[警告]"
-set "ERROR_PREFIX=[错误]"
+:: Output text labels (cmd does not support colors)
+set "INFO_PREFIX=[INFO]"
+set "SUCCESS_PREFIX=[SUCCESS]"
+set "WARNING_PREFIX=[WARNING]"
+set "ERROR_PREFIX=[ERROR]"
 
-echo %INFO_PREFIX% Docker Windows 安装脚本
-echo %INFO_PREFIX% =======================
+echo %INFO_PREFIX% Docker Windows Installation Script
+echo %INFO_PREFIX% ===================================
 
-:: 检查是否以管理员身份运行
+:: Check if running as administrator
 net session >nul 2>&1
 if %errorlevel% neq 0 (
-    echo %WARNING_PREFIX% 此脚本未以管理员身份运行
-    echo %INFO_PREFIX% 某些操作可能需要管理员权限
-    echo %INFO_PREFIX% 建议以管理员身份运行以获得最佳效果
+    echo %WARNING_PREFIX% This script is not running as administrator
+    echo %INFO_PREFIX% Some operations may require administrator privileges
+    echo %INFO_PREFIX% Recommend running as administrator for best results
     echo.
 )
 
-:: 检测架构
+:: Detect architecture
 set "ARCH=x64"
 if "%PROCESSOR_ARCHITECTURE%"=="ARM64" set "ARCH=ARM64"
 if "%PROCESSOR_ARCHITEW6432%"=="ARM64" set "ARCH=ARM64"
 
-echo %INFO_PREFIX% 检测到平台: Windows-%ARCH%
+echo %INFO_PREFIX% Detected platform: Windows-%ARCH%
 
-:: 检查 Docker 是否已安装
+:: Check if Docker is installed
 set "CURRENT_VERSION=not_installed"
 where docker >nul 2>&1
 if %errorlevel% equ 0 (
@@ -38,124 +38,124 @@ if %errorlevel% equ 0 (
         set "CURRENT_VERSION=!CURRENT_VERSION:,=!"
     )
     if "!CURRENT_VERSION!"=="" set "CURRENT_VERSION=unknown"
-    echo %INFO_PREFIX% 当前 Docker 版本: !CURRENT_VERSION!
+    echo %INFO_PREFIX% Current Docker version: !CURRENT_VERSION!
     
-    :: 检查 Docker 是否正常工作
+    :: Check if Docker is working properly
     docker info >nul 2>&1
     if %errorlevel% equ 0 (
-        echo %SUCCESS_PREFIX% Docker 已安装且工作正常
+        echo %SUCCESS_PREFIX% Docker is installed and working properly
         goto :verify_installation
     ) else (
-        echo %WARNING_PREFIX% Docker 已安装但工作不正常
-        echo %INFO_PREFIX% Docker Desktop 可能未运行
-        echo %INFO_PREFIX% 请启动 Docker Desktop 然后重试
+        echo %WARNING_PREFIX% Docker is installed but not working properly
+        echo %INFO_PREFIX% Docker Desktop may not be running
+        echo %INFO_PREFIX% Please start Docker Desktop and try again
     )
 ) else (
-    echo %INFO_PREFIX% Docker 目前未安装
+    echo %INFO_PREFIX% Docker is currently not installed
 )
 
-:: 检查 Windows 版本兼容性
+:: Check Windows version compatibility
 for /f "tokens=2 delims=[]" %%i in ('ver') do set "WIN_VER=%%i"
-echo %INFO_PREFIX% Windows 版本: !WIN_VER!
+echo %INFO_PREFIX% Windows version: !WIN_VER!
 
-:: 检查是否为 Windows 10/11
+:: Check if Windows 10/11
 echo !WIN_VER! | findstr /C:"10.0" >nul
 if %errorlevel% equ 0 (
-    echo %INFO_PREFIX% 检测到 Windows 10/11 - 支持 Docker Desktop
+    echo %INFO_PREFIX% Detected Windows 10/11 - Docker Desktop supported
 ) else (
-    echo %WARNING_PREFIX% 检测到较旧的 Windows 版本
-    echo %INFO_PREFIX% Docker Desktop 需要 Windows 10 版本 2004 或更高
-    echo %INFO_PREFIX% 请查看系统要求: https://docs.docker.com/desktop/windows/install/
+    echo %WARNING_PREFIX% Detected older Windows version
+    echo %INFO_PREFIX% Docker Desktop requires Windows 10 version 2004 or higher
+    echo %INFO_PREFIX% Please check system requirements: https://docs.docker.com/desktop/windows/install/
 )
 
-:: 检查 Hyper-V 和 WSL2 要求
-echo %INFO_PREFIX% 正在检查系统要求...
+:: Check Hyper-V and WSL2 requirements
+echo %INFO_PREFIX% Checking system requirements...
 
-:: 检查 Hyper-V 是否可用
+:: Check if Hyper-V is available
 dism /online /get-featureinfo /featurename:Microsoft-Hyper-V >nul 2>&1
 if %errorlevel% equ 0 (
-    echo %SUCCESS_PREFIX% Hyper-V 可用
+    echo %SUCCESS_PREFIX% Hyper-V is available
 ) else (
-    echo %WARNING_PREFIX% Hyper-V 可能不可用或未启用
-    echo %INFO_PREFIX% Docker Desktop 可以使用 WSL2 作为替代
+    echo %WARNING_PREFIX% Hyper-V may not be available or enabled
+    echo %INFO_PREFIX% Docker Desktop can use WSL2 as an alternative
 )
 
-:: 检查是否安装了 WSL
+:: Check if WSL is installed
 wsl --status >nul 2>&1
 if %errorlevel% equ 0 (
-    echo %SUCCESS_PREFIX% WSL 已安装
+    echo %SUCCESS_PREFIX% WSL is installed
     wsl --list --verbose 2>nul | findstr /C:"Ubuntu" >nul
     if %errorlevel% equ 0 (
-        echo %SUCCESS_PREFIX% 找到 WSL Ubuntu 发行版
+        echo %SUCCESS_PREFIX% Found WSL Ubuntu distribution
     ) else (
-        echo %INFO_PREFIX% 未找到 WSL 发行版，但 WSL 可用
+        echo %INFO_PREFIX% No WSL distributions found, but WSL is available
     )
 ) else (
-    echo %WARNING_PREFIX% WSL 未安装或配置不正确
-    echo %INFO_PREFIX% 建议安装 WSL2 以获得更好的 Docker 性能
-    echo %INFO_PREFIX% 运行: wsl --install
+    echo %WARNING_PREFIX% WSL is not installed or configured properly
+    echo %INFO_PREFIX% Recommend installing WSL2 for better Docker performance
+    echo %INFO_PREFIX% Run: wsl --install
 )
 
-:: 下载并安装 Docker Desktop
+:: Download and install Docker Desktop
 echo.
-echo %INFO_PREFIX% 正在安装 Docker Desktop...
-echo %INFO_PREFIX% 这将从 Docker 官方网站下载 Docker Desktop
+echo %INFO_PREFIX% Installing Docker Desktop...
+echo %INFO_PREFIX% This will download Docker Desktop from the official Docker website
 
-:: 检查 curl 是否可用
+:: Check if curl is available
 where curl >nul 2>&1
 if %errorlevel% neq 0 (
-    echo %ERROR_PREFIX% curl 不可用
-    echo %INFO_PREFIX% 请安装 curl 或从以下地址手动下载 Docker Desktop:
+    echo %ERROR_PREFIX% curl is not available
+    echo %INFO_PREFIX% Please install curl or manually download Docker Desktop from:
     echo %INFO_PREFIX% https://desktop.docker.com/win/main/amd64/Docker%%20Desktop%%20Installer.exe
     pause
     exit /b 1
 )
 
-:: 创建临时目录
+:: Create temporary directory
 set "TEMP_DIR=%TEMP%\docker-install-%RANDOM%"
 mkdir "%TEMP_DIR%" 2>nul
 
-:: 下载 Docker Desktop 安装程序
+:: Download Docker Desktop installer
 set "INSTALLER_FILE=%TEMP_DIR%\DockerDesktopInstaller.exe"
 
-echo %INFO_PREFIX% 正在下载 Docker Desktop 安装程序...
+echo %INFO_PREFIX% Downloading Docker Desktop installer...
 curl -L -o "%INSTALLER_FILE%" "https://desktop.docker.com/win/main/amd64/Docker%%20Desktop%%20Installer.exe"
 if %errorlevel% neq 0 (
-    echo %ERROR_PREFIX% 下载 Docker Desktop 安装程序失败
-    echo %INFO_PREFIX% 请从以下地址手动下载: https://www.docker.com/products/docker-desktop
+    echo %ERROR_PREFIX% Failed to download Docker Desktop installer
+    echo %INFO_PREFIX% Please manually download from: https://www.docker.com/products/docker-desktop
     rd /s /q "%TEMP_DIR%" 2>nul
     pause
     exit /b 1
 )
 
-echo %SUCCESS_PREFIX% 下载完成
+echo %SUCCESS_PREFIX% Download completed
 
-:: 运行安装程序
-echo %INFO_PREFIX% 正在运行 Docker Desktop 安装程序...
-echo %INFO_PREFIX% 请按照安装向导操作
-echo %WARNING_PREFIX% 安装程序可能需要重启系统
+:: Run installer
+echo %INFO_PREFIX% Running Docker Desktop installer...
+echo %INFO_PREFIX% Please follow the installation wizard
+echo %WARNING_PREFIX% The installer may require a system restart
 
 start /wait "" "%INSTALLER_FILE%"
 set "INSTALL_EXIT_CODE=%errorlevel%"
 
-:: 清理
+:: Cleanup
 rd /s /q "%TEMP_DIR%" 2>nul
 
 if %INSTALL_EXIT_CODE% equ 0 (
-    echo %SUCCESS_PREFIX% Docker Desktop 安装程序成功完成
+    echo %SUCCESS_PREFIX% Docker Desktop installer completed successfully
 ) else (
-    echo %WARNING_PREFIX% Docker Desktop 安装程序退出代码为 %INSTALL_EXIT_CODE%
-    echo %INFO_PREFIX% 如果安装成功，这可能是正常的
+    echo %WARNING_PREFIX% Docker Desktop installer exited with code %INSTALL_EXIT_CODE%
+    echo %INFO_PREFIX% This may be normal if installation was successful
 )
 
 :verify_installation
 echo.
-echo %INFO_PREFIX% 正在验证安装...
+echo %INFO_PREFIX% Verifying installation...
 
-:: 等待可能的系统变化
+:: Wait for possible system changes
 timeout /t 3 /nobreak >nul
 
-:: 检查 Docker 命令是否可用
+:: Check if Docker command is available
 where docker >nul 2>&1
 if %errorlevel% equ 0 (
     for /f "tokens=3" %%i in ('docker --version 2^>nul') do (
@@ -163,56 +163,56 @@ if %errorlevel% equ 0 (
         set "INSTALLED_VERSION=!INSTALLED_VERSION:,=!"
     )
     if "!INSTALLED_VERSION!"=="" set "INSTALLED_VERSION=unknown"
-    echo %SUCCESS_PREFIX% Docker 版本: !INSTALLED_VERSION!
+    echo %SUCCESS_PREFIX% Docker version: !INSTALLED_VERSION!
     
-    :: 测试 Docker 守护进程是否运行
+    :: Test if Docker daemon is running
     docker info >nul 2>&1
     if %errorlevel% equ 0 (
-        echo %SUCCESS_PREFIX% Docker 守护进程正在运行
+        echo %SUCCESS_PREFIX% Docker daemon is running
         
-        :: 使用 hello-world 测试
-        echo %INFO_PREFIX% 正在使用 hello-world 容器测试 Docker...
+        :: Test with hello-world
+        echo %INFO_PREFIX% Testing Docker with hello-world container...
         docker run --rm hello-world >nul 2>&1
         if %errorlevel% equ 0 (
-            echo %SUCCESS_PREFIX% Docker 工作正常
+            echo %SUCCESS_PREFIX% Docker is working properly
         ) else (
-            echo %WARNING_PREFIX% Docker 测试容器失败
-            echo %INFO_PREFIX% Docker 可能需要时间完全启动
+            echo %WARNING_PREFIX% Docker test container failed
+            echo %INFO_PREFIX% Docker may need time to fully start up
         )
     ) else (
-        echo %WARNING_PREFIX% Docker 守护进程未运行
-        echo %INFO_PREFIX% 请从开始菜单或桌面启动 Docker Desktop
-        echo %INFO_PREFIX% Docker Desktop 需要运行才能使用 Docker 命令
+        echo %WARNING_PREFIX% Docker daemon is not running
+        echo %INFO_PREFIX% Please start Docker Desktop from Start menu or desktop
+        echo %INFO_PREFIX% Docker Desktop needs to be running to use Docker commands
     )
 ) else (
-    echo %WARNING_PREFIX% 未找到 Docker 命令
-    echo %INFO_PREFIX% Docker Desktop 可能未正确安装
-    echo %INFO_PREFIX% 尝试重启计算机并运行 Docker Desktop
+    echo %WARNING_PREFIX% Docker command not found
+    echo %INFO_PREFIX% Docker Desktop may not be installed correctly
+    echo %INFO_PREFIX% Try restarting your computer and running Docker Desktop
 )
 
 echo.
-echo %SUCCESS_PREFIX% 安装过程完成！
+echo %SUCCESS_PREFIX% Installation process completed!
 echo.
-echo %INFO_PREFIX% 下一步：
-echo %INFO_PREFIX% 1. 如果 Docker Desktop 尚未运行，请从开始菜单启动它
-echo %INFO_PREFIX% 2. 等待 Docker Desktop 完成启动（可能需要几分钟）
-echo %INFO_PREFIX% 3. 接受 Docker Desktop 中的任何许可协议
-echo %INFO_PREFIX% 4. 使用以下命令测试 Docker: docker run hello-world
+echo %INFO_PREFIX% Next steps:
+echo %INFO_PREFIX% 1. If Docker Desktop is not running yet, start it from the Start menu
+echo %INFO_PREFIX% 2. Wait for Docker Desktop to complete startup (may take a few minutes)
+echo %INFO_PREFIX% 3. Accept any license agreements in Docker Desktop
+echo %INFO_PREFIX% 4. Test Docker with this command: docker run hello-world
 echo.
-echo %INFO_PREFIX% 使用示例：
-echo %INFO_PREFIX%   docker --version                      # 检查 Docker 版本
-echo %INFO_PREFIX%   docker info                           # 显示系统信息
-echo %INFO_PREFIX%   docker run hello-world                # 使用 hello-world 测试
-echo %INFO_PREFIX%   docker run -it ubuntu bash            # 运行交互式 Ubuntu 容器
-echo %INFO_PREFIX%   docker ps                             # 列出运行中的容器
-echo %INFO_PREFIX%   docker images                         # 列出镜像
+echo %INFO_PREFIX% Usage examples:
+echo %INFO_PREFIX%   docker --version                      # Check Docker version
+echo %INFO_PREFIX%   docker info                           # Show system information
+echo %INFO_PREFIX%   docker run hello-world                # Test with hello-world
+echo %INFO_PREFIX%   docker run -it ubuntu bash            # Run interactive Ubuntu container
+echo %INFO_PREFIX%   docker ps                             # List running containers
+echo %INFO_PREFIX%   docker images                         # List images
 echo.
-echo %INFO_PREFIX% 故障排除：
-echo %INFO_PREFIX% - 如果 Docker 命令无效，请重启计算机
-echo %INFO_PREFIX% - 确保 Docker Desktop 正在运行（检查系统托盘）
-echo %INFO_PREFIX% - 检查 Docker Desktop 的 WSL2 或 Hyper-V 配置设置
-echo %INFO_PREFIX% - 对于 WSL2 后端：确保 WSL2 已安装并更新
+echo %INFO_PREFIX% Troubleshooting:
+echo %INFO_PREFIX% - If Docker commands don't work, restart your computer
+echo %INFO_PREFIX% - Ensure Docker Desktop is running (check system tray)
+echo %INFO_PREFIX% - Check Docker Desktop's WSL2 or Hyper-V configuration settings
+echo %INFO_PREFIX% - For WSL2 backend: Ensure WSL2 is installed and updated
 echo.
-echo %INFO_PREFIX% 更多信息请访问: https://docs.docker.com/desktop/windows/
+echo %INFO_PREFIX% For more information visit: https://docs.docker.com/desktop/windows/
 
 pause

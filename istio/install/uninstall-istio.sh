@@ -219,7 +219,7 @@ main() {
     
     # Check if istioctl is installed
     if check_istioctl_installed; then
-        local current_version=$(istioctl version --client --short 2>/dev/null | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -1 || echo "unknown")
+        local current_version=$(istioctl version --short 2>/dev/null | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -1 || echo "unknown")
         print_info "Current istioctl version: $current_version"
     fi
     

@@ -1,18 +1,18 @@
 #!/bin/bash
 
-# Docker 国内镜像源自动配置脚本
-# 适用于 Linux 系统
+# Docker Registry Mirror Configuration Script
+# For Linux systems
 
 set -e
 
-# 颜色定义
+# Color definitions
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
-# 日志函数
+# Logging functions
 log_info() {
     echo -e "${BLUE}[INFO]${NC} $1"
 }
@@ -29,46 +29,46 @@ log_error() {
     echo -e "${RED}[ERROR]${NC} $1"
 }
 
-# 检查是否为root用户或具有sudo权限
+# Check if running as root or has sudo privileges
 check_permissions() {
     if [[ $EUID -eq 0 ]]; then
         SUDO=""
     elif command -v sudo &> /dev/null; then
         SUDO="sudo"
-        log_info "检测到sudo权限，将使用sudo执行命令"
+        log_info "Detected sudo privileges, will use sudo for commands"
     else
-        log_error "需要root权限或sudo权限来配置Docker"
+        log_error "Root privileges or sudo access required to configure Docker"
         exit 1
     fi
 }
 
-# 检查Docker是否已安装
+# Check if Docker is installed
 check_docker() {
     if ! command -v docker &> /dev/null; then
-        log_error "Docker未安装，请先安装Docker"
+        log_error "Docker is not installed, please install Docker first"
         exit 1
     fi
-    log_success "Docker已安装"
+    log_success "Docker is installed"
 }
 
-# 备份现有配置
+# Backup existing configuration
 backup_config() {
     if [ -f /etc/docker/daemon.json ]; then
-        log_info "备份现有Docker配置..."
+        log_info "Backing up existing Docker configuration..."
         $SUDO cp /etc/docker/daemon.json /etc/docker/daemon.json.backup.$(date +%Y%m%d_%H%M%S)
-        log_success "配置已备份"
+        log_success "Configuration backed up"
     fi
 }
 
-# 创建Docker配置目录
+# Create Docker configuration directory
 create_docker_dir() {
-    log_info "创建Docker配置目录..."
+    log_info "Creating Docker configuration directory..."
     $SUDO mkdir -p /etc/docker
 }
 
-# 生成Docker daemon配置
+# Generate Docker daemon configuration
 generate_config() {
-    log_info "生成Docker镜像源配置..."
+    log_info "Generating Docker registry mirror configuration..."
     
     cat << 'EOF' | $SUDO tee /etc/docker/daemon.json > /dev/null
 {
@@ -107,92 +107,92 @@ generate_config() {
 }
 EOF
     
-    log_success "配置文件已生成"
+    log_success "Configuration file generated"
 }
 
-# 验证配置文件格式
+# Validate configuration file format
 validate_config() {
-    log_info "验证配置文件格式..."
+    log_info "Validating configuration file format..."
     if ! python3 -m json.tool /etc/docker/daemon.json > /dev/null 2>&1; then
-        log_error "配置文件格式错误"
+        log_error "Configuration file format is invalid"
         exit 1
     fi
-    log_success "配置文件格式正确"
+    log_success "Configuration file format is valid"
 }
 
-# 重启Docker服务
+# Restart Docker service
 restart_docker() {
-    log_info "重启Docker服务..."
+    log_info "Restarting Docker service..."
     
     if command -v systemctl &> /dev/null; then
         $SUDO systemctl daemon-reload
         $SUDO systemctl restart docker
-        log_success "Docker服务已重启"
+        log_success "Docker service restarted"
     else
-        log_warning "无法自动重启Docker服务，请手动重启"
+        log_warning "Cannot automatically restart Docker service, please restart manually"
         return 1
     fi
 }
 
-# 验证配置
+# Verify configuration
 verify_config() {
-    log_info "验证镜像源配置..."
+    log_info "Verifying registry mirror configuration..."
     
-    # 等待Docker服务完全启动
+    # Wait for Docker service to fully start
     sleep 3
     
     if docker info 2>/dev/null | grep -q "Registry Mirrors"; then
-        log_success "镜像源配置成功！"
+        log_success "Registry mirror configuration successful!"
         echo
-        echo "配置的镜像源："
+        echo "Configured registry mirrors:"
         docker info 2>/dev/null | grep -A 10 "Registry Mirrors:" | head -n 6
     else
-        log_warning "无法验证镜像源配置，请检查Docker服务状态"
+        log_warning "Cannot verify registry mirror configuration, please check Docker service status"
     fi
 }
 
-# 测试镜像拉取
+# Test image pulling
 test_pull() {
-    log_info "测试镜像拉取速度..."
+    log_info "Testing image pull speed..."
     echo
-    echo "测试拉取 hello-world 镜像："
+    echo "Testing pull of hello-world image:"
     
     if time docker pull hello-world; then
-        log_success "镜像拉取测试成功！"
+        log_success "Image pull test successful!"
     else
-        log_warning "镜像拉取测试失败，请检查网络连接"
+        log_warning "Image pull test failed, please check network connection"
     fi
 }
 
-# 显示使用说明
+# Show usage instructions
 show_usage() {
-    echo "Docker 国内镜像源配置脚本"
+    echo "Docker Registry Mirror Configuration Script"
     echo
-    echo "用法: $0 [选项]"
+    echo "Usage: $0 [options]"
     echo
-    echo "选项:"
-    echo "  -h, --help     显示帮助信息"
-    echo "  -t, --test     配置完成后测试镜像拉取"
-    echo "  -v, --verify   仅验证当前配置"
+    echo "Options:"
+    echo "  -h, --help     Show help information"
+    echo "  -t, --test     Test image pulling after configuration"
+    echo "  -v, --verify   Only verify current configuration"
     echo
-    echo "示例:"
-    echo "  $0              # 配置镜像源"
-    echo "  $0 -t           # 配置镜像源并测试"
-    echo "  $0 -v           # 验证当前配置"
+    echo "Examples:"
+    echo "  $0              # Configure registry mirrors"
+    echo "  $0 -t           # Configure registry mirrors and test"
+    echo "  $0 -v           # Verify current configuration"
 }
 
-# 仅验证配置
+# Verify configuration only
 verify_only() {
     check_docker
     verify_config
 }
 
-# 主函数
+# Main function
 main() {
     local test_pull_flag=false
     local verify_only_flag=false
     
-    # 解析命令行参数
+    # Parse command line arguments
     while [[ $# -gt 0 ]]; do
         case $1 in
             -h|--help)
@@ -208,25 +208,25 @@ main() {
                 shift
                 ;;
             *)
-                log_error "未知参数: $1"
+                log_error "Unknown parameter: $1"
                 show_usage
                 exit 1
                 ;;
         esac
     done
     
-    # 如果只是验证配置
+    # If only verifying configuration
     if [ "$verify_only_flag" = true ]; then
         verify_only
         exit 0
     fi
     
     echo "========================================"
-    echo "    Docker 国内镜像源配置脚本"
+    echo "  Docker Registry Mirror Configuration"
     echo "========================================"
     echo
     
-    # 执行配置流程
+    # Execute configuration process
     check_permissions
     check_docker
     backup_config
@@ -236,26 +236,26 @@ main() {
     restart_docker
     verify_config
     
-    # 如果指定了测试标志
+    # If test flag is specified
     if [ "$test_pull_flag" = true ]; then
         echo
         test_pull
     fi
     
     echo
-    log_success "Docker 国内镜像源配置完成！"
+    log_success "Docker registry mirror configuration completed!"
     echo
-    echo "常用命令："
-    echo "  docker info                    # 查看Docker信息和镜像源配置"
-    echo "  docker pull nginx:latest       # 测试镜像拉取"
-    echo "  docker system prune -a         # 清理Docker缓存"
+    echo "Common commands:"
+    echo "  docker info                    # View Docker info and registry mirror configuration"
+    echo "  docker pull nginx:latest       # Test image pulling"
+    echo "  docker system prune -a         # Clean Docker cache"
     echo
-    echo "如需恢复原配置，请使用备份的配置文件："
+    echo "To restore original configuration, use backup file:"
     echo "  sudo cp /etc/docker/daemon.json.backup.* /etc/docker/daemon.json"
     echo "  sudo systemctl restart docker"
 }
 
-# 脚本入口
+# Script entry point
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
     main "$@"
 fi

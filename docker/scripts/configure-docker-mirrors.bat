@@ -2,62 +2,62 @@
 chcp 65001 >nul
 setlocal enabledelayedexpansion
 
-REM Docker 国内镜像源自动配置脚本 (Windows版本)
-REM 适用于 Docker Desktop for Windows
+REM Docker Registry Mirror Configuration Script (Windows Version)
+REM For Docker Desktop for Windows
 
-title Docker 国内镜像源配置工具
+title Docker Registry Mirror Configuration Tool
 
 echo ========================================
-echo     Docker 国内镜像源配置脚本 (Windows)
+echo   Docker Registry Mirror Configuration (Windows)
 echo ========================================
 echo.
 
-REM 检查管理员权限
+REM Check administrator privileges
 net session >nul 2>&1
 if %errorLevel% neq 0 (
-    echo [错误] 需要管理员权限运行此脚本
-    echo 请右键点击脚本文件，选择"以管理员身份运行"
+    echo [ERROR] Administrator privileges required to run this script
+    echo Please right-click the script file and select "Run as administrator"
     pause
     exit /b 1
 )
 
-REM 检查Docker Desktop是否运行
-echo [信息] 检查Docker Desktop状态...
+REM Check if Docker Desktop is running
+echo [INFO] Checking Docker Desktop status...
 docker version >nul 2>&1
 if %errorLevel% neq 0 (
-    echo [错误] Docker Desktop未运行或未安装
-    echo 请确保Docker Desktop已安装并正在运行
+    echo [ERROR] Docker Desktop is not running or not installed
+    echo Please ensure Docker Desktop is installed and running
     pause
     exit /b 1
 )
-echo [成功] Docker Desktop正在运行
+echo [SUCCESS] Docker Desktop is running
 
-REM 显示当前配置
+REM Show current configuration
 echo.
-echo [信息] 当前Docker配置:
+echo [INFO] Current Docker configuration:
 docker info | findstr /C:"Registry Mirrors"
 if %errorLevel% neq 0 (
-    echo 当前未配置镜像源
+    echo No registry mirrors currently configured
 )
 
 echo.
-echo [信息] 即将配置以下国内镜像源:
-echo   - 1ms 镜像源: https://docker.1ms.run
-echo   - Azure 中国镜像源: https://dockerhub.azk8s.cn
-echo   - AnyHub 镜像源: https://docker.anyhub.us.kg
-echo   - Jobcher 镜像源: https://dockerhub.jobcher.com
-echo   - ICU 镜像源: https://dockerhub.icu
+echo [INFO] Will configure the following registry mirrors:
+echo   - 1ms Mirror: https://docker.1ms.run
+echo   - Azure China Mirror: https://dockerhub.azk8s.cn
+echo   - AnyHub Mirror: https://docker.anyhub.us.kg
+echo   - Jobcher Mirror: https://dockerhub.jobcher.com
+echo   - ICU Mirror: https://dockerhub.icu
 echo.
 
-set /p confirm="是否继续配置? (Y/N): "
+set /p confirm="Continue with configuration? (Y/N): "
 if /i "!confirm!" neq "Y" (
-    echo 配置已取消
+    echo Configuration cancelled
     pause
     exit /b 0
 )
 
-REM 创建临时配置文件
-echo [信息] 生成Docker配置...
+REM Create temporary configuration file
+echo [INFO] Generating Docker configuration...
 set temp_config=%temp%\docker-daemon.json
 
 (
@@ -75,64 +75,64 @@ echo   "experimental": false
 echo }
 ) > "!temp_config!"
 
-echo [成功] 配置文件已生成
+echo [SUCCESS] Configuration file generated
 
 echo.
-echo [信息] 请按照以下步骤手动配置Docker Desktop:
+echo [INFO] Please follow these steps to manually configure Docker Desktop:
 echo.
-echo 1. 右键点击系统托盘中的Docker图标
-echo 2. 选择 "Settings" (设置)
-echo 3. 在左侧菜单中选择 "Docker Engine"
-echo 4. 将以下配置复制并替换现有配置:
+echo 1. Right-click the Docker icon in the system tray
+echo 2. Select "Settings"
+echo 3. Select "Docker Engine" from the left menu
+echo 4. Copy and replace the existing configuration with the following:
 echo.
 echo ----------------------------------------
 type "!temp_config!"
 echo ----------------------------------------
 echo.
-echo 5. 点击 "Apply & Restart" 按钮
-echo 6. 等待Docker重启完成
+echo 5. Click the "Apply & Restart" button
+echo 6. Wait for Docker to restart completely
 echo.
 
 pause
 
 echo.
-echo [信息] 正在验证配置...
+echo [INFO] Verifying configuration...
 timeout /t 5 /nobreak >nul
 
-REM 验证配置
+REM Verify configuration
 docker info | findstr /C:"Registry Mirrors" >nul
 if %errorLevel% equ 0 (
-    echo [成功] 镜像源配置成功！
+    echo [SUCCESS] Registry mirror configuration successful!
     echo.
-    echo 配置的镜像源:
+    echo Configured registry mirrors:
     docker info | findstr /C:"Registry Mirrors" /A:5
 ) else (
-    echo [警告] 无法验证镜像源配置，请检查Docker Desktop设置
+    echo [WARNING] Cannot verify registry mirror configuration, please check Docker Desktop settings
 )
 
 echo.
-set /p test_pull="是否测试镜像拉取? (Y/N): "
+set /p test_pull="Test image pulling? (Y/N): "
 if /i "!test_pull!" equ "Y" (
-    echo [信息] 测试拉取 hello-world 镜像...
+    echo [INFO] Testing pull of hello-world image...
     docker pull hello-world
     if %errorLevel% equ 0 (
-        echo [成功] 镜像拉取测试成功！
+        echo [SUCCESS] Image pull test successful!
     ) else (
-        echo [警告] 镜像拉取测试失败，请检查网络连接
+        echo [WARNING] Image pull test failed, please check network connection
     )
 )
 
-REM 清理临时文件
+REM Clean up temporary files
 del "!temp_config!" >nul 2>&1
 
 echo.
-echo [完成] Docker 国内镜像源配置完成！
+echo [COMPLETED] Docker registry mirror configuration completed!
 echo.
-echo 常用命令:
-echo   docker info                    # 查看Docker信息和镜像源配置
-echo   docker pull nginx:latest       # 测试镜像拉取
-echo   docker system prune -a         # 清理Docker缓存
+echo Common commands:
+echo   docker info                    # View Docker info and registry mirror configuration
+echo   docker pull nginx:latest       # Test image pulling
+echo   docker system prune -a         # Clean Docker cache
 echo.
-echo 如需恢复默认配置，请在Docker Desktop设置中删除镜像源配置
+echo To restore default configuration, remove registry mirror settings in Docker Desktop
 
 pause

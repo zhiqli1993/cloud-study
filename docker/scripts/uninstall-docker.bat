@@ -1,28 +1,28 @@
 @echo off
 setlocal enabledelayedexpansion
 
-:: Docker Windows 卸载脚本
-:: 使用方法: uninstall-docker.bat
+:: Docker Windows Uninstallation Script
+:: Usage: uninstall-docker.bat
 
-:: 输出文本标签
-set "INFO_PREFIX=[信息]"
-set "SUCCESS_PREFIX=[成功]"
-set "WARNING_PREFIX=[警告]"
-set "ERROR_PREFIX=[错误]"
+:: Output text labels
+set "INFO_PREFIX=[INFO]"
+set "SUCCESS_PREFIX=[SUCCESS]"
+set "WARNING_PREFIX=[WARNING]"
+set "ERROR_PREFIX=[ERROR]"
 
-echo %INFO_PREFIX% Docker Windows 卸载脚本
-echo %INFO_PREFIX% =======================
+echo %INFO_PREFIX% Docker Windows Uninstallation Script
+echo %INFO_PREFIX% ===================================
 
-:: 检查是否以管理员身份运行
+:: Check if running as administrator
 net session >nul 2>&1
 if %errorlevel% neq 0 (
-    echo %WARNING_PREFIX% 此脚本未以管理员身份运行
-    echo %INFO_PREFIX% 某些操作可能需要管理员权限
-    echo %INFO_PREFIX% 建议以管理员身份运行以完全移除
+    echo %WARNING_PREFIX% This script is not running as administrator
+    echo %INFO_PREFIX% Some operations may require administrator privileges
+    echo %INFO_PREFIX% Recommend running as administrator for complete removal
     echo.
 )
 
-:: 检查 Docker 是否已安装
+:: Check if Docker is installed
 set "CURRENT_VERSION=not_installed"
 where docker >nul 2>&1
 if %errorlevel% equ 0 (
@@ -31,21 +31,21 @@ if %errorlevel% equ 0 (
         set "CURRENT_VERSION=!CURRENT_VERSION:,=!"
     )
     if "!CURRENT_VERSION!"=="" set "CURRENT_VERSION=unknown"
-    echo %INFO_PREFIX% Docker 已安装 (版本: !CURRENT_VERSION!)
+    echo %INFO_PREFIX% Docker is installed (version: !CURRENT_VERSION!)
 ) else (
-    echo %WARNING_PREFIX% Docker 未安装或不在 PATH 中
-    echo %INFO_PREFIX% 正在检查 Docker Desktop 安装...
+    echo %WARNING_PREFIX% Docker is not installed or not in PATH
+    echo %INFO_PREFIX% Checking for Docker Desktop installation...
     goto :check_docker_desktop
 )
 
-:: 数据丢失警告
+:: Data loss warning
 echo.
-echo %WARNING_PREFIX% 这将完全移除 Docker 及其所有数据！
-echo %WARNING_PREFIX% 所有容器、镜像、数据卷和网络都将被删除！
+echo %WARNING_PREFIX% This will completely remove Docker and all its data!
+echo %WARNING_PREFIX% All containers, images, volumes and networks will be deleted!
 echo.
-set /p "confirm=您确定要继续吗？ (y/N): "
+set /p "confirm=Are you sure you want to continue? (y/N): "
 if /i not "%confirm%"=="y" if /i not "%confirm%"=="yes" (
-    echo %INFO_PREFIX% 卸载已取消
+    echo %INFO_PREFIX% Uninstallation cancelled
     pause
     exit /b 0
 )

@@ -102,7 +102,7 @@ get_latest_version() {
 # Check if istioctl is already installed and get version
 check_current_version() {
     if command -v istioctl >/dev/null 2>&1; then
-        local current_version=$(istioctl version --client --short 2>/dev/null | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -1 || echo "unknown")
+        local current_version=$(istioctl version --short 2>/dev/null | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -1 || echo "unknown")
         echo "$current_version"
     else
         echo "not_installed"
@@ -329,15 +329,22 @@ main() {
         print_info "istioctl is not currently installed"
     else
         print_info "Current istioctl version: $current_version"
-        if [[ "v$current_version" == "$target_version" || "$current_version" == "$target_version" ]]; then
-            print_success "istioctl $target_version is already installed"
+        # Normalize version strings for comparison (remove 'v' prefix if present)
+        local normalized_current="${current_version#v}"
+        local normalized_target="${target_version#v}"
+        
+        if [[ "$normalized_current" == "$normalized_target" ]]; then
+            print_success "istioctl $target_version is already installed and up to date"
         else
-            print_info "Upgrading istioctl from $current_version to $target_version..."
+            print_info "Upgrading istioctl from $current_version to $target_version"
         fi
     fi
     
-    # Install or upgrade istioctl
-    if [[ "$current_version" == "not_installed" || "v$current_version" != "$target_version" ]]; then
+    # Install or upgrade istioctl only if versions don't match
+    local normalized_current="${current_version#v}"
+    local normalized_target="${target_version#v}"
+    
+    if [[ "$current_version" == "not_installed" || "$normalized_current" != "$normalized_target" ]]; then
         if [[ "$current_version" == "not_installed" ]]; then
             print_info "Installing istioctl $target_version..."
         else

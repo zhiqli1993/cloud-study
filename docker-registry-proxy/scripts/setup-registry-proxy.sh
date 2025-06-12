@@ -1,25 +1,25 @@
 #!/bin/bash
 
-# Kubernetes Docker Registry 代理安装脚本
-# 用于在Kubernetes集群中配置和部署Docker Registry代理
+# Kubernetes Docker Registry Proxy Installation Script
+# For configuring and deploying Docker Registry proxy in Kubernetes clusters
 
 set -euo pipefail
 
-# 脚本配置
+# Script configuration
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" &> /dev/null && pwd)"
 PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
 NAMESPACE="${NAMESPACE:-default}"
 REGISTRY_PROXY_NAME="${REGISTRY_PROXY_NAME:-registry-proxy}"
 VERBOSE="${VERBOSE:-false}"
 
-# 颜色输出
+# Color output
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
-# 日志函数
+# Logging functions
 log_info() {
     echo -e "${GREEN}[INFO]${NC} $1"
 }
@@ -38,61 +38,61 @@ log_debug() {
     fi
 }
 
-# 帮助信息
+# Help information
 show_help() {
     cat << EOF
-Kubernetes Docker Registry 代理安装脚本
+Kubernetes Docker Registry Proxy Installation Script
 
-用法: $0 [选项]
+Usage: $0 [options]
 
-选项:
-    -h, --help              显示帮助信息
-    -n, --namespace NAME    指定Kubernetes命名空间 (默认: default)
-    -v, --verbose           启用详细输出
-    --dry-run              只显示将要执行的命令，不实际执行
-    --uninstall            卸载Registry代理
-    --check-deps           检查依赖项
-    --config-only          只生成配置文件
-    --skip-deploy          跳过部署步骤
+Options:
+    -h, --help              Show help information
+    -n, --namespace NAME    Specify Kubernetes namespace (default: default)
+    -v, --verbose           Enable verbose output
+    --dry-run              Show commands to be executed without running them
+    --uninstall            Uninstall Registry proxy
+    --check-deps           Check dependencies
+    --config-only          Only generate configuration files
+    --skip-deploy          Skip deployment steps
 
-环境变量:
-    NAMESPACE              Kubernetes命名空间
-    REGISTRY_PROXY_NAME    Registry代理名称
-    HTTP_PROXY             HTTP代理地址
-    HTTPS_PROXY            HTTPS代理地址
-    NO_PROXY               不使用代理的地址列表
-    DOCKER_REGISTRY_USER   Docker Registry用户名
-    DOCKER_REGISTRY_PASS   Docker Registry密码
-    DOCKER_REGISTRY_EMAIL  Docker Registry邮箱
-    DOCKER_REGISTRY_SERVER Docker Registry服务器地址
+Environment Variables:
+    NAMESPACE              Kubernetes namespace
+    REGISTRY_PROXY_NAME    Registry proxy name
+    HTTP_PROXY             HTTP proxy address
+    HTTPS_PROXY            HTTPS proxy address
+    NO_PROXY               Addresses to bypass proxy
+    DOCKER_REGISTRY_USER   Docker Registry username
+    DOCKER_REGISTRY_PASS   Docker Registry password
+    DOCKER_REGISTRY_EMAIL  Docker Registry email
+    DOCKER_REGISTRY_SERVER Docker Registry server address
 
-示例:
-    # 基本安装
+Examples:
+    # Basic installation
     $0
 
-    # 指定命名空间安装
+    # Install with specific namespace
     $0 --namespace registry-system
 
-    # 配置代理环境变量后安装
+    # Install with proxy environment variables
     HTTP_PROXY=http://proxy.company.com:8080 \\
     HTTPS_PROXY=http://proxy.company.com:8080 \\
     $0
 
-    # 配置私有Registry认证
+    # Configure private Registry authentication
     DOCKER_REGISTRY_SERVER=registry.company.com \\
     DOCKER_REGISTRY_USER=myuser \\
     DOCKER_REGISTRY_PASS=mypass \\
     DOCKER_REGISTRY_EMAIL=user@company.com \\
     $0
 
-    # 卸载
+    # Uninstall
     $0 --uninstall
 EOF
 }
 
-# 检查依赖项
+# Check dependencies
 check_dependencies() {
-    log_info "检查依赖项..."
+    log_info "Checking dependencies..."
     
     local deps=("kubectl" "docker")
     local missing_deps=()
@@ -101,40 +101,40 @@ check_dependencies() {
         if ! command -v "$dep" &> /dev/null; then
             missing_deps+=("$dep")
         else
-            log_debug "$dep 已安装: $(command -v "$dep")"
+            log_debug "$dep installed: $(command -v "$dep")"
         fi
     done
     
     if [[ ${#missing_deps[@]} -gt 0 ]]; then
-        log_error "缺少以下依赖项: ${missing_deps[*]}"
-        log_error "请先安装这些工具后再运行此脚本"
+        log_error "Missing dependencies: ${missing_deps[*]}"
+        log_error "Please install these tools before running this script"
         return 1
     fi
     
-    # 检查kubectl连接
+    # Check kubectl connection
     if ! kubectl cluster-info &> /dev/null; then
-        log_error "无法连接到Kubernetes集群"
-        log_error "请确保kubectl已正确配置且集群可访问"
+        log_error "Cannot connect to Kubernetes cluster"
+        log_error "Please ensure kubectl is properly configured and cluster is accessible"
         return 1
     fi
     
-    log_info "所有依赖项检查通过"
+    log_info "All dependency checks passed"
     return 0
 }
 
-# 创建命名空间
+# Create namespace
 create_namespace() {
-    log_info "创建命名空间: $NAMESPACE"
+    log_info "Creating namespace: $NAMESPACE"
     
     if kubectl get namespace "$NAMESPACE" &> /dev/null; then
-        log_info "命名空间 $NAMESPACE 已存在"
+        log_info "Namespace $NAMESPACE already exists"
     else
         kubectl create namespace "$NAMESPACE"
-        log_info "命名空间 $NAMESPACE 创建成功"
+        log_info "Namespace $NAMESPACE created successfully"
     fi
 }
 
-# 生成Registry认证Secret
+# Create Registry authentication Secret
 create_registry_secret() {
     local server="${DOCKER_REGISTRY_SERVER:-registry.company.com}"
     local username="${DOCKER_REGISTRY_USER:-}"
@@ -142,7 +142,7 @@ create_registry_secret() {
     local email="${DOCKER_REGISTRY_EMAIL:-user@company.com}"
     
     if [[ -n "$username" && -n "$password" ]]; then
-        log_info "创建Registry认证Secret..."
+        log_info "Creating Registry authentication Secret..."
         
         kubectl create secret docker-registry registry-secret \
             --namespace="$NAMESPACE" \
@@ -152,13 +152,13 @@ create_registry_secret() {
             --docker-email="$email" \
             --dry-run=client -o yaml | kubectl apply -f -
         
-        log_info "Registry认证Secret创建成功"
+        log_info "Registry authentication Secret created successfully"
     else
-        log_warn "未提供Registry认证信息，使用默认配置"
+        log_warn "No Registry authentication information provided, using default configuration"
     fi
 }
 
-# 生成代理配置
+# Generate proxy configuration
 generate_proxy_config() {
     local config_file="$PROJECT_DIR/configs/docker-daemon-proxy.json"
     local http_proxy="${HTTP_PROXY:-}"
@@ -166,9 +166,9 @@ generate_proxy_config() {
     local no_proxy="${NO_PROXY:-localhost,127.0.0.1,10.0.0.0/8,172.16.0.0/12,192.168.0.0/16,*.local,*.internal}"
     
     if [[ -n "$http_proxy" || -n "$https_proxy" ]]; then
-        log_info "更新代理配置..."
+        log_info "Updating proxy configuration..."
         
-        # 使用jq更新配置文件（如果可用）
+        # Use jq to update configuration file (if available)
         if command -v jq &> /dev/null; then
             local temp_file=$(mktemp)
             jq --arg http_proxy "$http_proxy" \
@@ -179,30 +179,30 @@ generate_proxy_config() {
                 .proxies.default.noProxy = $no_proxy' \
                "$config_file" > "$temp_file"
             mv "$temp_file" "$config_file"
-            log_info "代理配置更新成功"
+            log_info "Proxy configuration updated successfully"
         else
-            log_warn "jq未安装，请手动编辑 $config_file"
+            log_warn "jq not installed, please manually edit $config_file"
         fi
     fi
 }
 
-# 应用Kubernetes配置
+# Apply Kubernetes configurations
 apply_kubernetes_configs() {
-    log_info "应用Kubernetes配置..."
+    log_info "Applying Kubernetes configurations..."
     
-    # 应用认证和RBAC配置
+    # Apply authentication and RBAC configuration
     if [[ -f "$PROJECT_DIR/configs/private-registry-secret.yaml" ]]; then
-        log_debug "应用Registry认证配置..."
+        log_debug "Applying Registry authentication configuration..."
         kubectl apply -f "$PROJECT_DIR/configs/private-registry-secret.yaml" -n "$NAMESPACE"
     fi
     
-    # 应用Registry代理部署
+    # Apply Registry proxy deployment
     if [[ -f "$PROJECT_DIR/manifests/registry-proxy-deployment.yaml" ]]; then
-        log_debug "应用Registry代理部署..."
+        log_debug "Applying Registry proxy deployment..."
         kubectl apply -f "$PROJECT_DIR/manifests/registry-proxy-deployment.yaml" -n "$NAMESPACE"
     fi
     
-    log_info "Kubernetes配置应用成功"
+    log_info "Kubernetes configurations applied successfully"
 }
 
 # 等待部署就绪

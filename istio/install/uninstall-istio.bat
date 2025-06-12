@@ -33,7 +33,7 @@ set "ISTIOCTL_INSTALLED=false"
 where istioctl >nul 2>&1
 if %errorlevel% equ 0 (
     set "ISTIOCTL_INSTALLED=true"
-    for /f "tokens=*" %%i in ('istioctl version --client --short 2^>nul') do (
+    for /f "tokens=*" %%i in ('istioctl version --short 2^>nul') do (
         for /f "tokens=1,2,3 delims=." %%a in ("%%i") do (
             if "%%a" neq "" if "%%b" neq "" if "%%c" neq "" (
                 set "CURRENT_VERSION=%%a.%%b.%%c"

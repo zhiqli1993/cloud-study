@@ -1,33 +1,33 @@
 #!/bin/bash
 
-# Docker 卸载脚本
-# 支持 Linux 和 macOS 平台
-# 使用方法: ./uninstall-docker.sh
+# Docker Uninstallation Script
+# Supports Linux and macOS platforms
+# Usage: ./uninstall-docker.sh
 
 set -e
 
-# 输出颜色
+# Output colors
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
-NC='\033[0m' # 无颜色
+NC='\033[0m' # No Color
 
-# 打印彩色输出
+# Print colored output
 print_info() {
-    echo -e "${BLUE}[信息]${NC} $1"
+    echo -e "${BLUE}[INFO]${NC} $1"
 }
 
 print_success() {
-    echo -e "${GREEN}[成功]${NC} $1"
+    echo -e "${GREEN}[SUCCESS]${NC} $1"
 }
 
 print_warning() {
-    echo -e "${YELLOW}[警告]${NC} $1"
+    echo -e "${YELLOW}[WARNING]${NC} $1"
 }
 
 print_error() {
-    echo -e "${RED}[错误]${NC} $1"
+    echo -e "${RED}[ERROR]${NC} $1"
 }
 
 # Ask for user confirmation
@@ -379,34 +379,34 @@ verify_uninstallation() {
     fi
 }
 
-# 主函数
+# Main function
 main() {
-    print_info "Docker 卸载脚本"
-    print_info "================"
+    print_info "Docker Uninstallation Script"
+    print_info "============================"
     
-    # 检查是否以 root 身份运行
+    # Check if running as root
     if [[ $EUID -eq 0 ]]; then
-        print_error "此脚本不应以 root 身份运行"
-        print_info "请以普通用户身份运行。脚本会在需要时使用 sudo。"
+        print_error "This script should not be run as root"
+        print_info "Please run as a regular user. The script will use sudo when needed."
         exit 1
     fi
     
-    # 检测平台
+    # Detect platform
     detect_platform
     
-    # 检查 Docker 是否已安装
+    # Check if Docker is installed
     if ! check_docker_installation; then
-        print_info "Docker 似乎未安装。正在检查配置文件..."
+        print_info "Docker appears to be not installed. Checking configuration files..."
         remove_docker_config
-        print_success "卸载完成（Docker 未安装）"
+        print_success "Uninstallation completed (Docker was not installed)"
         exit 0
     fi
     
-    print_warning "这将完全移除 Docker 及其所有数据！"
-    print_warning "所有容器、镜像、数据卷和网络都将被删除！"
+    print_warning "This will completely remove Docker and all its data!"
+    print_warning "All containers, images, volumes and networks will be deleted!"
     
-    if ! ask_confirmation "您确定要继续卸载吗？"; then
-        print_info "卸载已取消"
+    if ! ask_confirmation "Are you sure you want to continue with uninstallation?"; then
+        print_info "Uninstallation cancelled"
         exit 0
     fi
     
