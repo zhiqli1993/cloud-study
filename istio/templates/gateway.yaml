@@ -1,0 +1,114 @@
+# Gateway Template - HTTP/HTTPS Ingress
+apiVersion: networking.istio.io/v1beta1
+kind: Gateway
+metadata:
+  name: example-gateway
+  namespace: default
+spec:
+  selector:
+    istio: ingressgateway
+  servers:
+  - port:
+      number: 80
+      name: http
+      protocol: HTTP
+    hosts:
+    - example.com
+    - api.example.com
+    tls:
+      httpsRedirect: true
+  - port:
+      number: 443
+      name: https
+      protocol: HTTPS
+    hosts:
+    - example.com
+    - api.example.com
+    tls:
+      mode: SIMPLE
+      credentialName: example-tls-cert
+---
+# Gateway Template - TCP/TLS Gateway
+apiVersion: networking.istio.io/v1beta1
+kind: Gateway
+metadata:
+  name: tcp-gateway
+  namespace: default
+spec:
+  selector:
+    istio: ingressgateway
+  servers:
+  - port:
+      number: 3306
+      name: mysql
+      protocol: TCP
+    hosts:
+    - mysql.example.com
+  - port:
+      number: 3307
+      name: mysql-tls
+      protocol: TLS
+    hosts:
+    - secure-mysql.example.com
+    tls:
+      mode: SIMPLE
+      credentialName: mysql-tls-cert
+---
+# Gateway Template - mTLS Gateway
+apiVersion: networking.istio.io/v1beta1
+kind: Gateway
+metadata:
+  name: mtls-gateway
+  namespace: default
+spec:
+  selector:
+    istio: ingressgateway
+  servers:
+  - port:
+      number: 8443
+      name: https-mtls
+      protocol: HTTPS
+    hosts:
+    - secure.example.com
+    tls:
+      mode: MUTUAL
+      credentialName: mtls-cert
+      caCertificates: /etc/ssl/certs/ca.pem
+---
+# Gateway Template - Multi-Protocol Gateway
+apiVersion: networking.istio.io/v1beta1
+kind: Gateway
+metadata:
+  name: multi-protocol-gateway
+  namespace: default
+spec:
+  selector:
+    istio: ingressgateway
+  servers:
+  - port:
+      number: 80
+      name: web-http
+      protocol: HTTP
+    hosts:
+    - web.example.com
+  - port:
+      number: 443
+      name: web-https
+      protocol: HTTPS
+    hosts:
+    - web.example.com
+    tls:
+      mode: SIMPLE
+      credentialName: web-tls-cert
+  - port:
+      number: 9080
+      name: grpc
+      protocol: GRPC
+    hosts:
+    - grpc.example.com
+  - port:
+      number: 27017
+      name: mongo
+      protocol: MONGO
+    hosts:
+    - mongo.example.com

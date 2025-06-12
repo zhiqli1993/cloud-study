@@ -1,0 +1,284 @@
+# Istio 流量治理模板索引
+# 快速参考和应用指南
+
+---
+# 模板应用顺序建议
+# 1. 基础设施层
+#    - ServiceEntry (外部服务注册)
+#    - WorkloadEntry (VM工作负载)
+# 2. 流量管理层
+#    - Gateway (入口网关)
+#    - DestinationRule (目标规则)
+#    - VirtualService (虚拟服务)
+# 3. 安全策略层
+#    - PeerAuthentication (对等认证)
+#    - RequestAuthentication (请求认证)
+#    - AuthorizationPolicy (授权策略)
+# 4. 高级配置层
+#    - EnvoyFilter (Envoy过滤器)
+#    - Sidecar (边车配置)
+# 5. 可观测性层
+#    - Telemetry (遥测配置)
+
+---
+# 快速应用命令
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: istio-template-commands
+  namespace: istio-system
+data:
+  # 基础流量管理
+  basic-traffic.sh: |
+    #!/bin/bash
+    echo "应用基础流量管理配置..."
+    kubectl apply -f destination-rule.yaml
+    kubectl apply -f virtual-service.yaml
+    kubectl apply -f gateway.yaml
+    
+  # 安全策略
+  security-policies.sh: |
+    #!/bin/bash
+    echo "应用安全策略配置..."
+    kubectl apply -f policy.yaml
+    
+  # 外部服务集成
+  external-services.sh: |
+    #!/bin/bash
+    echo "注册外部服务..."
+    kubectl apply -f service-entry.yaml
+    kubectl apply -f workloadentry.yaml
+    
+  # 高级配置
+  advanced-config.sh: |
+    #!/bin/bash
+    echo "应用高级配置..."
+    kubectl apply -f envoyfilter.yaml
+    
+  # 可观测性
+  observability.sh: |
+    #!/bin/bash
+    echo "配置可观测性..."
+    kubectl apply -f telemetry.yaml
+    
+  # 完整部署
+  deploy-all.sh: |
+    #!/bin/bash
+    echo "部署所有Istio配置..."
+    
+    echo "1. 外部服务注册..."
+    kubectl apply -f service-entry.yaml
+    kubectl apply -f workloadentry.yaml
+    
+    echo "2. 流量管理配置..."
+    kubectl apply -f gateway.yaml
+    kubectl apply -f destination-rule.yaml
+    kubectl apply -f virtual-service.yaml
+    
+    echo "3. 安全策略配置..."
+    kubectl apply -f policy.yaml
+    
+    echo "4. 高级配置..."
+    kubectl apply -f envoyfilter.yaml
+    
+    echo "5. 可观测性配置..."
+    kubectl apply -f telemetry.yaml
+    
+    echo "部署完成！"
+    
+  # 清理所有配置
+  cleanup-all.sh: |
+    #!/bin/bash
+    echo "清理所有Istio配置..."
+    
+    kubectl delete -f telemetry.yaml --ignore-not-found=true
+    kubectl delete -f envoyfilter.yaml --ignore-not-found=true
+    kubectl delete -f policy.yaml --ignore-not-found=true
+    kubectl delete -f virtual-service.yaml --ignore-not-found=true
+    kubectl delete -f destination-rule.yaml --ignore-not-found=true
+    kubectl delete -f gateway.yaml --ignore-not-found=true
+    kubectl delete -f workloadentry.yaml --ignore-not-found=true
+    kubectl delete -f service-entry.yaml --ignore-not-found=true
+    
+    echo "清理完成！"
+
+---
+# 模板文件说明
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: istio-template-descriptions
+  namespace: istio-system
+data:
+  file-descriptions.yaml: |
+    templates:
+      virtual-service.yaml:
+        description: "VirtualService - HTTP/TCP流量路由配置"
+        use-cases:
+          - HTTP路由规则
+          - 权重分流/金丝雀发布
+          - 故障注入测试
+          - 超时和重试配置
+          - TCP流量路由
+        examples:
+          - name: "Header路由"
+            selector: ".spec.http[0].match[0].headers"
+          - name: "权重分流"
+            selector: ".spec.http[1].route[*].weight"
+          - name: "故障注入"
+            selector: ".spec.http[1].fault"
+            
+      destination-rule.yaml:
+        description: "DestinationRule - 目标服务策略配置"
+        use-cases:
+          - 负载均衡策略
+          - 连接池管理
+          - 熔断器配置
+          - 服务子集定义
+          - mTLS配置
+        examples:
+          - name: "负载均衡"
+            selector: ".spec.trafficPolicy.loadBalancer"
+          - name: "连接池"
+            selector: ".spec.trafficPolicy.connectionPool"
+          - name: "熔断器"
+            selector: ".spec.trafficPolicy.circuitBreaker"
+            
+      gateway.yaml:
+        description: "Gateway - 入口网关配置"
+        use-cases:
+          - HTTP/HTTPS入口
+          - TLS终止
+          - TCP/TLS网关
+          - mTLS双向认证
+          - 多协议支持
+        examples:
+          - name: "HTTPS重定向"
+            selector: ".spec.servers[0].tls.httpsRedirect"
+          - name: "TLS配置"
+            selector: ".spec.servers[1].tls"
+            
+      service-entry.yaml:
+        description: "ServiceEntry - 外部服务注册"
+        use-cases:
+          - 外部HTTP/HTTPS服务
+          - 外部TCP服务
+          - 静态IP配置
+          - VM工作负载
+          - gRPC服务
+        examples:
+          - name: "DNS解析"
+            selector: ".spec.resolution"
+          - name: "静态端点"
+            selector: ".spec.endpoints"
+            
+      policy.yaml:
+        description: "安全策略配置"
+        use-cases:
+          - JWT认证
+          - RBAC授权
+          - mTLS对等认证
+          - 访问控制
+        examples:
+          - name: "JWT规则"
+            selector: "RequestAuthentication.spec.jwtRules"
+          - name: "授权规则"
+            selector: "AuthorizationPolicy.spec.rules"
+          - name: "mTLS模式"
+            selector: "PeerAuthentication.spec.mtls.mode"
+            
+      envoyfilter.yaml:
+        description: "EnvoyFilter - Envoy代理自定义配置"
+        use-cases:
+          - 限流配置
+          - WebAssembly插件
+          - Lua脚本
+          - 熔断器
+          - 访问日志
+        examples:
+          - name: "限流配置"
+            selector: ".spec.configPatches[0].patch.value.typed_config"
+          - name: "Lua脚本"
+            selector: ".spec.configPatches[0].patch.value.typed_config.inline_code"
+            
+      workloadentry.yaml:
+        description: "工作负载和边车配置"
+        use-cases:
+          - VM工作负载注册
+          - VM集群管理
+          - 边车配置
+          - 流量策略
+        examples:
+          - name: "VM注册"
+            selector: "WorkloadEntry.spec.address"
+          - name: "边车出口"
+            selector: "Sidecar.spec.egress"
+            
+      telemetry.yaml:
+        description: "Telemetry - 遥测数据配置"
+        use-cases:
+          - 自定义指标
+          - 分布式追踪
+          - 访问日志
+          - 监控配置
+        examples:
+          - name: "指标维度"
+            selector: ".spec.metrics[2].dimensions"
+          - name: "追踪标签"
+            selector: ".spec.tracing[1].customTags"
+          - name: "日志格式"
+            selector: ".spec.accessLogging[1].format"
+
+---
+# 常见问题和解决方案
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: istio-troubleshooting
+  namespace: istio-system
+data:
+  troubleshooting.yaml: |
+    common-issues:
+      - issue: "VirtualService不生效"
+        solutions:
+          - "检查hosts配置是否正确"
+          - "确认Gateway和VirtualService的hosts匹配"
+          - "验证selector标签是否正确"
+          - "检查命名空间是否正确"
+          
+      - issue: "mTLS连接失败"
+        solutions:
+          - "确认PeerAuthentication配置正确"
+          - "检查证书是否有效"
+          - "验证DestinationRule中的TLS配置"
+          - "确认服务账户权限"
+          
+      - issue: "外部服务无法访问"
+        solutions:
+          - "检查ServiceEntry配置"
+          - "确认DNS解析配置"
+          - "验证网络策略"
+          - "检查Sidecar出口规则"
+          
+      - issue: "负载均衡不均匀"
+        solutions:
+          - "检查DestinationRule负载均衡策略"
+          - "确认服务端点健康状态"
+          - "验证连接池配置"
+          - "检查会话亲和性设置"
+          
+    debugging-commands:
+      - name: "检查Istio配置状态"
+        command: "istioctl analyze"
+        
+      - name: "查看代理配置"
+        command: "istioctl proxy-config cluster <pod-name>"
+        
+      - name: "检查Envoy配置"
+        command: "istioctl proxy-config listener <pod-name>"
+        
+      - name: "查看访问日志"
+        command: "kubectl logs <pod-name> -c istio-proxy"
+        
+      - name: "检查证书状态"
+        command: "istioctl proxy-config secret <pod-name>"

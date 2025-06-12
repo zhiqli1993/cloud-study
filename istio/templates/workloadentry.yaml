@@ -1,0 +1,150 @@
+# WorkloadEntry Template - VM Registration
+apiVersion: networking.istio.io/v1beta1
+kind: WorkloadEntry
+metadata:
+  name: vm-workload-entry
+  namespace: default
+spec:
+  address: 192.168.1.100
+  ports:
+    http: 8080
+    https: 8443
+    grpc: 9090
+  labels:
+    app: vm-service
+    version: v1.0
+    env: production
+  serviceAccount: vm-service-account
+  network: vm-network
+  locality: region1/zone1
+---
+# WorkloadEntry Template - External Service
+apiVersion: networking.istio.io/v1beta1
+kind: WorkloadEntry
+metadata:
+  name: external-service-entry
+  namespace: default
+spec:
+  address: external-service.company.com
+  ports:
+    http: 80
+    https: 443
+  labels:
+    app: external-api
+    version: v2.0
+    provider: external
+  serviceAccount: external-service-account
+---
+# WorkloadEntry Template - Database Server
+apiVersion: networking.istio.io/v1beta1
+kind: WorkloadEntry
+metadata:
+  name: database-server
+  namespace: default
+spec:
+  address: 10.0.1.50
+  ports:
+    mysql: 3306
+    redis: 6379
+  labels:
+    app: database
+    type: mysql
+    tier: data
+  serviceAccount: database-service-account
+  network: internal-network
+  locality: region1/zone2
+---
+# WorkloadGroup Template - VM Fleet Management
+apiVersion: networking.istio.io/v1beta1
+kind: WorkloadGroup
+metadata:
+  name: vm-workload-group
+  namespace: default
+spec:
+  metadata:
+    labels:
+      app: vm-fleet
+      version: v1.0
+    annotations:
+      sidecar.istio.io/inject: "true"
+  template:
+    ports:
+      http: 8080
+      metrics: 9090
+    serviceAccount: vm-fleet-service-account
+    network: vm-network
+  probe:
+    httpGet:
+      path: /health
+      port: 8080
+    initialDelaySeconds: 10
+    periodSeconds: 30
+    failureThreshold: 3
+---
+# Sidecar Template - Workload Configuration
+apiVersion: networking.istio.io/v1beta1
+kind: Sidecar
+metadata:
+  name: workload-sidecar
+  namespace: default
+spec:
+  workloadSelector:
+    labels:
+      app: example-app
+  ingress:
+  - port:
+      number: 8080
+      protocol: HTTP
+      name: http
+    defaultEndpoint: 127.0.0.1:8080
+    captureMode: IPTABLES
+  - port:
+      number: 9090
+      protocol: GRPC
+      name: grpc
+    defaultEndpoint: 127.0.0.1:9090
+  egress:
+  - port:
+      number: 80
+      protocol: HTTP
+      name: http
+    hosts:
+    - "./*"
+    - "istio-system/*"
+  - port:
+      number: 443
+      protocol: HTTPS
+      name: https
+    hosts:
+    - "external.com"
+    - "api.external.com"
+  - port:
+      number: 3306
+      protocol: TCP
+      name: mysql
+    hosts:
+    - "./database-service"
+  outboundTrafficPolicy:
+    mode: REGISTRY_ONLY
+---
+# Sidecar Template - Namespace-wide Configuration
+apiVersion: networking.istio.io/v1beta1
+kind: Sidecar
+metadata:
+  name: namespace-sidecar
+  namespace: production
+spec:
+  egress:
+  - hosts:
+    - "./*"
+    - "istio-system/*"
+    - "kube-system/kube-dns"
+  - port:
+      number: 443
+      protocol: HTTPS
+      name: external-https
+    hosts:
+    - "external-apis.com"
+    - "monitoring.company.com"
+  outboundTrafficPolicy:
+    mode: ALLOW_ANY

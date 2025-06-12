@@ -1,0 +1,64 @@
+# VirtualService Template - HTTP Traffic Routing
+apiVersion: networking.istio.io/v1beta1
+kind: VirtualService
+metadata:
+  name: example-virtual-service
+  namespace: default
+spec:
+  hosts:
+  - example-service
+  - example.com
+  http:
+  - match:
+    - headers:
+        end-user:
+          exact: jason
+    route:
+    - destination:
+        host: example-service
+        subset: v2
+  - match:
+    - uri:
+        prefix: /api/v1
+    route:
+    - destination:
+        host: example-service
+        subset: v1
+      weight: 90
+    - destination:
+        host: example-service
+        subset: v2
+      weight: 10
+    fault:
+      delay:
+        percentage:
+          value: 0.1
+        fixedDelay: 5s
+  - route:
+    - destination:
+        host: example-service
+        subset: v1
+    timeout: 10s
+    retries:
+      attempts: 3
+      perTryTimeout: 2s
+      retryOn: gateway-error,connect-failure,refused-stream
+---
+# VirtualService Template - TCP Traffic Routing
+apiVersion: networking.istio.io/v1beta1
+kind: VirtualService
+metadata:
+  name: tcp-virtual-service
+  namespace: default
+spec:
+  hosts:
+  - tcp-service
+  tcp:
+  - match:
+    - port: 3306
+    route:
+    - destination:
+        host: tcp-service
+        port:
+          number: 3306
+        subset: primary

@@ -1,0 +1,91 @@
+# ServiceEntry Template - External HTTP Service
+apiVersion: networking.istio.io/v1beta1
+kind: ServiceEntry
+metadata:
+  name: external-http-service
+  namespace: default
+spec:
+  hosts:
+  - httpbin.org
+  ports:
+  - number: 80
+    name: http
+    protocol: HTTP
+  - number: 443
+    name: https
+    protocol: HTTPS
+  location: MESH_EXTERNAL
+  resolution: DNS
+---
+# ServiceEntry Template - External TCP Service
+apiVersion: networking.istio.io/v1beta1
+kind: ServiceEntry
+metadata:
+  name: external-tcp-service
+  namespace: default
+spec:
+  hosts:
+  - tcp-service.external.com
+  ports:
+  - number: 3306
+    name: mysql
+    protocol: TCP
+  location: MESH_EXTERNAL
+  resolution: DNS
+---
+# ServiceEntry Template - External Service with Static IPs
+apiVersion: networking.istio.io/v1beta1
+kind: ServiceEntry
+metadata:
+  name: external-static-service
+  namespace: default
+spec:
+  hosts:
+  - static-service.external.com
+  ports:
+  - number: 443
+    name: https
+    protocol: HTTPS
+  location: MESH_EXTERNAL
+  resolution: STATIC
+  endpoints:
+  - address: 192.168.1.100
+  - address: 192.168.1.101
+---
+# ServiceEntry Template - VM Workload
+apiVersion: networking.istio.io/v1beta1
+kind: ServiceEntry
+metadata:
+  name: vm-workload
+  namespace: default
+spec:
+  hosts:
+  - vm-service.local
+  ports:
+  - number: 8080
+    name: http
+    protocol: HTTP
+  location: MESH_EXTERNAL
+  resolution: STATIC
+  endpoints:
+  - address: 10.0.0.100
+    network: vm-network
+    locality: region1/zone1
+    ports:
+      http: 8080
+---
+# ServiceEntry Template - gRPC External Service
+apiVersion: networking.istio.io/v1beta1
+kind: ServiceEntry
+metadata:
+  name: external-grpc-service
+  namespace: default
+spec:
+  hosts:
+  - grpc-service.external.com
+  ports:
+  - number: 9090
+    name: grpc
+    protocol: GRPC
+  location: MESH_EXTERNAL
+  resolution: DNS

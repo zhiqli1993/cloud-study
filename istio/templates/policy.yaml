@@ -1,0 +1,107 @@
+# RequestAuthentication Template - JWT Authentication
+apiVersion: security.istio.io/v1beta1
+kind: RequestAuthentication
+metadata:
+  name: jwt-auth
+  namespace: default
+spec:
+  selector:
+    matchLabels:
+      app: example-app
+  jwtRules:
+  - issuer: "https://auth.example.com"
+    jwksUri: "https://auth.example.com/.well-known/jwks.json"
+    audiences:
+    - "example-service"
+    forwardOriginalToken: true
+  - issuer: "https://accounts.google.com"
+    jwksUri: "https://www.googleapis.com/oauth2/v3/certs"
+    audiences:
+    - "google-client-id"
+---
+# AuthorizationPolicy Template - RBAC Authorization
+apiVersion: security.istio.io/v1beta1
+kind: AuthorizationPolicy
+metadata:
+  name: rbac-policy
+  namespace: default
+spec:
+  selector:
+    matchLabels:
+      app: example-app
+  rules:
+  - from:
+    - source:
+        principals: ["cluster.local/ns/default/sa/admin"]
+    - source:
+        namespaces: ["admin-namespace"]
+    to:
+    - operation:
+        methods: ["GET", "POST"]
+        paths: ["/api/admin/*"]
+    when:
+    - key: request.headers[user-role]
+      values: ["admin", "super-admin"]
+  - from:
+    - source:
+        principals: ["cluster.local/ns/default/sa/user"]
+    to:
+    - operation:
+        methods: ["GET"]
+        paths: ["/api/user/*"]
+    when:
+    - key: source.ip
+      values: ["10.0.0.0/8", "192.168.0.0/16"]
+---
+# AuthorizationPolicy Template - Deny All Policy
+apiVersion: security.istio.io/v1beta1
+kind: AuthorizationPolicy
+metadata:
+  name: deny-all
+  namespace: default
+spec:
+  selector:
+    matchLabels:
+      app: secure-app
+  # Empty rules means deny all
+---
+# AuthorizationPolicy Template - Allow All Policy
+apiVersion: security.istio.io/v1beta1
+kind: AuthorizationPolicy
+metadata:
+  name: allow-all
+  namespace: default
+spec:
+  selector:
+    matchLabels:
+      app: public-app
+  rules:
+  - {} # Empty rule means allow all
+---
+# PeerAuthentication Template - mTLS Policy
+apiVersion: security.istio.io/v1beta1
+kind: PeerAuthentication
+metadata:
+  name: mtls-policy
+  namespace: default
+spec:
+  selector:
+    matchLabels:
+      app: secure-service
+  mtls:
+    mode: STRICT
+  portLevelMtls:
+    8080:
+      mode: PERMISSIVE
+    9090:
+      mode: DISABLE
+---
+# PeerAuthentication Template - Namespace-wide mTLS
+apiVersion: security.istio.io/v1beta1
+kind: PeerAuthentication
+metadata:
+  name: namespace-mtls
+  namespace: production
+spec:
+  mtls:
+    mode: STRICT

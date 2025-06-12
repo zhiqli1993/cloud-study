@@ -1,0 +1,184 @@
+# EnvoyFilter Template - Rate Limiting
+apiVersion: networking.istio.io/v1alpha3
+kind: EnvoyFilter
+metadata:
+  name: rate-limit-filter
+  namespace: default
+spec:
+  workloadSelector:
+    labels:
+      app: example-app
+  configPatches:
+  - applyTo: HTTP_FILTER
+    match:
+      context: SIDECAR_INBOUND
+      listener:
+        filterChain:
+          filter:
+            name: "envoy.filters.network.http_connection_manager"
+    patch:
+      operation: INSERT_BEFORE
+      value:
+        name: envoy.filters.http.local_ratelimit
+        typed_config:
+          "@type": type.googleapis.com/udpa.type.v1.TypedStruct
+          type_url: type.googleapis.com/envoy.extensions.filters.http.local_ratelimit.v3.LocalRateLimit
+          value:
+            stat_prefix: local_rate_limiter
+            token_bucket:
+              max_tokens: 100
+              tokens_per_fill: 100
+              fill_interval: 60s
+            filter_enabled:
+              runtime_key: local_rate_limit_enabled
+              default_value:
+                numerator: 100
+                denominator: HUNDRED
+            filter_enforced:
+              runtime_key: local_rate_limit_enforced
+              default_value:
+                numerator: 100
+                denominator: HUNDRED
+---
+# EnvoyFilter Template - Wasm Plugin
+apiVersion: networking.istio.io/v1alpha3
+kind: EnvoyFilter
+metadata:
+  name: wasm-plugin-filter
+  namespace: default
+spec:
+  workloadSelector:
+    labels:
+      app: example-app
+  configPatches:
+  - applyTo: HTTP_FILTER
+    match:
+      context: SIDECAR_INBOUND
+      listener:
+        filterChain:
+          filter:
+            name: "envoy.filters.network.http_connection_manager"
+    patch:
+      operation: INSERT_BEFORE
+      value:
+        name: envoy.filters.http.wasm
+        typed_config:
+          "@type": type.googleapis.com/envoy.extensions.filters.http.wasm.v3.Wasm
+          config:
+            name: "custom_plugin"
+            root_id: "custom_plugin"
+            configuration:
+              "@type": type.googleapis.com/google.protobuf.StringValue
+              value: |
+                {
+                  "config_key": "config_value"
+                }
+            vm_config:
+              vm_id: "custom_plugin"
+              runtime: "envoy.wasm.runtime.v8"
+              code:
+                local:
+                  inline_string: |
+                    // Your WebAssembly code here
+---
+# EnvoyFilter Template - Lua Script
+apiVersion: networking.istio.io/v1alpha3
+kind: EnvoyFilter
+metadata:
+  name: lua-script-filter
+  namespace: default
+spec:
+  workloadSelector:
+    labels:
+      app: example-app
+  configPatches:
+  - applyTo: HTTP_FILTER
+    match:
+      context: SIDECAR_INBOUND
+      listener:
+        filterChain:
+          filter:
+            name: "envoy.filters.network.http_connection_manager"
+    patch:
+      operation: INSERT_BEFORE
+      value:
+        name: envoy.filters.http.lua
+        typed_config:
+          "@type": type.googleapis.com/envoy.extensions.filters.http.lua.v3.Lua
+          inline_code: |
+            function envoy_on_request(request_handle)
+              -- Add custom header
+              request_handle:headers():add("x-custom-header", "added-by-lua")
+              
+              -- Log request
+              request_handle:logInfo("Request from: " .. request_handle:headers():get(":authority"))
+            end
+            
+            function envoy_on_response(response_handle)
+              -- Add response header
+              response_handle:headers():add("x-response-time", os.time())
+            end
+---
+# EnvoyFilter Template - Circuit Breaker
+apiVersion: networking.istio.io/v1alpha3
+kind: EnvoyFilter
+metadata:
+  name: circuit-breaker-filter
+  namespace: default
+spec:
+  workloadSelector:
+    labels:
+      app: example-app
+  configPatches:
+  - applyTo: CLUSTER
+    match:
+      context: SIDECAR_OUTBOUND
+    patch:
+      operation: MERGE
+      value:
+        circuit_breakers:
+          thresholds:
+          - priority: DEFAULT
+            max_connections: 100
+            max_pending_requests: 50
+            max_requests: 200
+            max_retries: 3
+            track_remaining: true
+          - priority: HIGH
+            max_connections: 200
+            max_pending_requests: 100
+            max_requests: 400
+            max_retries: 5
+---
+# EnvoyFilter Template - Custom Access Log
+apiVersion: networking.istio.io/v1alpha3
+kind: EnvoyFilter
+metadata:
+  name: custom-access-log
+  namespace: default
+spec:
+  workloadSelector:
+    labels:
+      app: example-app
+  configPatches:
+  - applyTo: NETWORK_FILTER
+    match:
+      listener:
+        filterChain:
+          filter:
+            name: "envoy.filters.network.http_connection_manager"
+    patch:
+      operation: MERGE
+      value:
+        typed_config:
+          "@type": type.googleapis.com/envoy.extensions.filters.network.http_connection_manager.v3.HttpConnectionManager
+          access_log:
+          - name: envoy.access_loggers.file
+            typed_config:
+              "@type": type.googleapis.com/envoy.extensions.access_loggers.file.v3.FileAccessLog
+              path: "/dev/stdout"
+              format: |
+                [%START_TIME%] "%REQ(:METHOD)% %REQ(X-ENVOY-ORIGINAL-PATH?:PATH)% %PROTOCOL%"
+                %RESPONSE_CODE% %RESPONSE_FLAGS% %BYTES_RECEIVED% %BYTES_SENT%
+                %DURATION% %RESP(X-ENVOY-UPSTREAM-SERVICE-TIME)% "%REQ(X-FORWARDED-FOR)%"
+                "%REQ(USER-AGENT)%" "%REQ(X-REQUEST-ID)%" "%REQ(:AUTHORITY)%" "%UPSTREAM_HOST%"

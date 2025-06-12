@@ -1,0 +1,185 @@
+# Telemetry Template - Custom Metrics
+apiVersion: telemetry.istio.io/v1alpha1
+kind: Telemetry
+metadata:
+  name: custom-metrics
+  namespace: default
+spec:
+  selector:
+    matchLabels:
+      app: example-app
+  metrics:
+  - providers:
+    - name: prometheus
+  - overrides:
+    - match:
+        metric: requests_total
+      tagOverrides:
+        request_protocol:
+          value: "http"
+    - match:
+        metric: request_duration_milliseconds
+      buckets:
+      - 0.5
+      - 1
+      - 5
+      - 10
+      - 25
+      - 50
+      - 100
+      - 250
+      - 500
+      - 1000
+      - 2500
+      - 5000
+      - 10000
+  - dimensions:
+      source_service: source.workload.name | "unknown"
+      source_version: source.labels["version"] | "unknown"
+      destination_service: destination.service.name | "unknown"
+      destination_version: destination.labels["version"] | "unknown"
+      request_protocol: request.protocol | "unknown"
+      response_code: response.code | 200
+---
+# Telemetry Template - Distributed Tracing
+apiVersion: telemetry.istio.io/v1alpha1
+kind: Telemetry
+metadata:
+  name: tracing-config
+  namespace: default
+spec:
+  selector:
+    matchLabels:
+      app: example-app
+  tracing:
+  - providers:
+    - name: jaeger
+  - customTags:
+      custom_header:
+        header:
+          name: x-custom-header
+          defaultValue: "default"
+      user_id:
+        header:
+          name: x-user-id
+      request_id:
+        header:
+          name: x-request-id
+      source_app:
+        literal:
+          value: "example-app"
+  - randomSamplingPercentage: 1.0
+---
+# Telemetry Template - Access Logging
+apiVersion: telemetry.istio.io/v1alpha1
+kind: Telemetry
+metadata:
+  name: access-logging
+  namespace: default
+spec:
+  selector:
+    matchLabels:
+      app: example-app
+  accessLogging:
+  - providers:
+    - name: otel
+  - format:
+      labels:
+        source_app: source.workload.name
+        source_version: source.labels["version"]
+        destination_app: destination.workload.name
+        destination_version: destination.labels["version"]
+        method: request.method
+        url: request.url_path
+        protocol: request.protocol
+        response_code: response.code
+        response_flags: response.flags
+        user_agent: request.headers["user-agent"]
+        request_id: request.headers["x-request-id"]
+        authority: request.headers[":authority"]
+        forwarded_for: request.headers["x-forwarded-for"]
+---
+# Telemetry Template - Namespace-wide Telemetry
+apiVersion: telemetry.istio.io/v1alpha1
+kind: Telemetry
+metadata:
+  name: namespace-telemetry
+  namespace: production
+spec:
+  metrics:
+  - providers:
+    - name: prometheus
+  - overrides:
+    - match:
+        metric: ALL_METRICS
+      disabled: false
+  tracing:
+  - providers:
+    - name: jaeger
+  - randomSamplingPercentage: 10.0
+  accessLogging:
+  - providers:
+    - name: otel
+  - format:
+      text: |
+        [%START_TIME%] "%REQ(:METHOD)% %REQ(X-ENVOY-ORIGINAL-PATH?:PATH)% %PROTOCOL%"
+        %RESPONSE_CODE% %RESPONSE_FLAGS% %BYTES_RECEIVED% %BYTES_SENT%
+        %DURATION% %RESP(X-ENVOY-UPSTREAM-SERVICE-TIME)% "%REQ(X-FORWARDED-FOR)%"
+        "%REQ(USER-AGENT)%" "%REQ(X-REQUEST-ID)%" "%REQ(:AUTHORITY)%" "%UPSTREAM_HOST%"
+---
+# Telemetry Template - Workload-specific Telemetry
+apiVersion: telemetry.istio.io/v1alpha1
+kind: Telemetry
+metadata:
+  name: workload-telemetry
+  namespace: default
+spec:
+  selector:
+    matchLabels:
+      app: critical-service
+      version: v1
+  metrics:
+  - providers:
+    - name: prometheus
+  - dimensions:
+      source_principal: source.principal | "unknown"
+      destination_principal: destination.principal | "unknown"
+      source_namespace: source.workload.namespace | "unknown"
+      destination_namespace: destination.workload.namespace | "unknown"
+      connection_security_policy: connection.security_policy | "unknown"
+  tracing:
+  - providers:
+    - name: jaeger
+  - customTags:
+      environment:
+        literal:
+          value: "production"
+      service_version:
+        literal:
+          value: "v1.0.0"
+      cluster:
+        literal:
+          value: "production-cluster"
+  - randomSamplingPercentage: 100.0
+  accessLogging:
+  - providers:
+    - name: otel
+  - format:
+      json:
+        timestamp: "%START_TIME%"
+        method: "%REQ(:METHOD)%"
+        path: "%REQ(X-ENVOY-ORIGINAL-PATH?:PATH)%"
+        protocol: "%PROTOCOL%"
+        response_code: "%RESPONSE_CODE%"
+        response_flags: "%RESPONSE_FLAGS%"
+        bytes_received: "%BYTES_RECEIVED%"
+        bytes_sent: "%BYTES_SENT%"
+        duration: "%DURATION%"
+        upstream_service_time: "%RESP(X-ENVOY-UPSTREAM-SERVICE-TIME)%"
+        x_forwarded_for: "%REQ(X-FORWARDED-FOR)%"
+        user_agent: "%REQ(USER-AGENT)%"
+        request_id: "%REQ(X-REQUEST-ID)%"
+        authority: "%REQ(:AUTHORITY)%"
+        upstream_host: "%UPSTREAM_HOST%"
+        source_app: "%{DOWNSTREAM_LOCAL_ADDRESS}%"
+        destination_app: "%{UPSTREAM_LOCAL_ADDRESS}%"
