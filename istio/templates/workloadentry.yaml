@@ -1,150 +1,163 @@
 # WorkloadEntry Template - VM Registration
-apiVersion: networking.istio.io/v1beta1
-kind: WorkloadEntry
+# WorkloadEntry 模板 - 虚拟机注册配置
+# 作用：将运行在虚拟机上的服务注册到 Istio 服务网格中，实现混合云架构
+apiVersion: networking.istio.io/v1beta1  # API 版本
+kind: WorkloadEntry  # 资源类型：WorkloadEntry，用于注册非 Kubernetes 工作负载
 metadata:
-  name: vm-workload-entry
-  namespace: default
+  name: vm-workload-entry  # 虚拟机工作负载条目名称
+  namespace: default  # 命名空间
 spec:
-  address: 192.168.1.100
-  ports:
-    http: 8080
-    https: 8443
-    grpc: 9090
-  labels:
-    app: vm-service
-    version: v1.0
-    env: production
-  serviceAccount: vm-service-account
-  network: vm-network
-  locality: region1/zone1
+  address: 192.168.1.100  # IP 地址：虚拟机的网络地址
+  ports:  # 端口映射：定义虚拟机服务监听的端口
+    http: 8080  # HTTP 服务端口
+    https: 8443  # HTTPS 服务端口
+    grpc: 9090  # gRPC 服务端口
+  labels:  # 标签：用于服务发现和流量路由
+    app: vm-service  # 应用标签：标识服务类型
+    version: v1.0  # 版本标签：用于版本化部署
+    env: production  # 环境标签：标识运行环境
+  serviceAccount: vm-service-account  # 服务账户：用于身份认证和授权
+  network: vm-network  # 网络标识：虚拟机所在的网络
+  locality: region1/zone1  # 地理位置：用于就近路由和故障转移
 ---
 # WorkloadEntry Template - External Service
+# WorkloadEntry 模板 - 外部服务配置
+# 作用：将外部第三方服务注册到服务网格中，统一管理和监控外部依赖
 apiVersion: networking.istio.io/v1beta1
 kind: WorkloadEntry
 metadata:
-  name: external-service-entry
+  name: external-service-entry  # 外部服务条目名称
   namespace: default
 spec:
-  address: external-service.company.com
-  ports:
-    http: 80
-    https: 443
-  labels:
-    app: external-api
-    version: v2.0
-    provider: external
-  serviceAccount: external-service-account
+  address: external-service.company.com  # 外部服务域名：第三方服务的地址
+  ports:  # 外部服务端口配置
+    http: 80  # HTTP 端口
+    https: 443  # HTTPS 端口
+  labels:  # 外部服务标签
+    app: external-api  # 应用类型：外部 API 服务
+    version: v2.0  # API 版本
+    provider: external  # 提供商标识：标识为外部服务
+  serviceAccount: external-service-account  # 外部服务账户：用于访问控制
 ---
 # WorkloadEntry Template - Database Server
+# WorkloadEntry 模板 - 数据库服务器配置
+# 作用：将数据库服务器注册到服务网格，实现数据库访问的统一管理和监控
 apiVersion: networking.istio.io/v1beta1
 kind: WorkloadEntry
 metadata:
-  name: database-server
+  name: database-server  # 数据库服务器条目名称
   namespace: default
 spec:
-  address: 10.0.1.50
-  ports:
-    mysql: 3306
-    redis: 6379
-  labels:
-    app: database
-    type: mysql
-    tier: data
-  serviceAccount: database-service-account
-  network: internal-network
-  locality: region1/zone2
+  address: 10.0.1.50  # 数据库服务器 IP 地址
+  ports:  # 数据库端口配置
+    mysql: 3306  # MySQL 数据库端口
+    redis: 6379  # Redis 缓存端口
+  labels:  # 数据库服务标签
+    app: database  # 应用类型：数据库
+    type: mysql  # 数据库类型：MySQL
+    tier: data  # 服务层级：数据层
+  serviceAccount: database-service-account  # 数据库服务账户
+  network: internal-network  # 内部网络：数据库专用网络
+  locality: region1/zone2  # 数据库服务器地理位置
 ---
 # WorkloadGroup Template - VM Fleet Management
+# WorkloadGroup 模板 - 虚拟机集群管理配置
+# 作用：管理一组相似的虚拟机工作负载，提供统一的配置模板和健康检查
 apiVersion: networking.istio.io/v1beta1
-kind: WorkloadGroup
+kind: WorkloadGroup  # 资源类型：WorkloadGroup，用于管理工作负载组
 metadata:
-  name: vm-workload-group
+  name: vm-workload-group  # 虚拟机工作负载组名称
   namespace: default
 spec:
-  metadata:
-    labels:
-      app: vm-fleet
-      version: v1.0
-    annotations:
-      sidecar.istio.io/inject: "true"
-  template:
-    ports:
-      http: 8080
-      metrics: 9090
-    serviceAccount: vm-fleet-service-account
-    network: vm-network
-  probe:
-    httpGet:
-      path: /health
-      port: 8080
-    initialDelaySeconds: 10
-    periodSeconds: 30
-    failureThreshold: 3
+  metadata:  # 工作负载组元数据模板
+    labels:  # 标签模板：应用于组内所有工作负载
+      app: vm-fleet  # 应用标签：虚拟机集群
+      version: v1.0  # 版本标签
+    annotations:  # 注解模板
+      sidecar.istio.io/inject: "true"  # Sidecar 注入：启用 Istio Sidecar 自动注入
+  template:  # 工作负载模板：定义组内工作负载的通用配置
+    ports:  # 端口模板
+      http: 8080  # HTTP 服务端口
+      metrics: 9090  # 指标暴露端口
+    serviceAccount: vm-fleet-service-account  # 服务账户模板
+    network: vm-network  # 网络配置
+  probe:  # 健康检查配置：监控工作负载健康状态
+    httpGet:  # HTTP 健康检查
+      path: /health  # 健康检查路径
+      port: 8080  # 健康检查端口
+    initialDelaySeconds: 10  # 初始延迟：启动后等待时间
+    periodSeconds: 30  # 检查间隔：每30秒检查一次
+    failureThreshold: 3  # 失败阈值：连续3次失败视为不健康
 ---
 # Sidecar Template - Workload Configuration
+# Sidecar 模板 - 工作负载配置
+# 作用：配置特定工作负载的 Sidecar 代理，控制入站和出站流量的处理方式
 apiVersion: networking.istio.io/v1beta1
-kind: Sidecar
+kind: Sidecar  # 资源类型：Sidecar，用于配置 Envoy Sidecar 代理
 metadata:
-  name: workload-sidecar
+  name: workload-sidecar  # Sidecar 配置名称
   namespace: default
 spec:
-  workloadSelector:
+  workloadSelector:  # 工作负载选择器：指定应用此配置的工作负载
     labels:
-      app: example-app
-  ingress:
+      app: example-app  # 目标应用标签
+  ingress:  # 入站配置：定义如何处理进入工作负载的流量
+  - port:  # 入站端口配置
+      number: 8080  # 端口号：HTTP 服务端口
+      protocol: HTTP  # 协议类型：HTTP 协议
+      name: http  # 端口名称
+    defaultEndpoint: 127.0.0.1:8080  # 默认端点：流量转发的本地地址
+    captureMode: IPTABLES  # 流量捕获模式：使用 iptables 重定向流量
   - port:
-      number: 8080
-      protocol: HTTP
-      name: http
-    defaultEndpoint: 127.0.0.1:8080
-    captureMode: IPTABLES
-  - port:
-      number: 9090
-      protocol: GRPC
+      number: 9090  # gRPC 服务端口
+      protocol: GRPC  # 协议类型：gRPC 协议
       name: grpc
-    defaultEndpoint: 127.0.0.1:9090
-  egress:
+    defaultEndpoint: 127.0.0.1:9090  # gRPC 服务本地端点
+  egress:  # 出站配置：定义工作负载可以访问的外部服务
   - port:
-      number: 80
+      number: 80  # HTTP 出站端口
       protocol: HTTP
       name: http
-    hosts:
-    - "./*"
-    - "istio-system/*"
+    hosts:  # 允许访问的主机列表
+    - "./*"  # 当前命名空间的所有服务
+    - "istio-system/*"  # Istio 系统命名空间的所有服务
   - port:
-      number: 443
+      number: 443  # HTTPS 出站端口
       protocol: HTTPS
       name: https
     hosts:
-    - "external.com"
-    - "api.external.com"
+    - "external.com"  # 外部域名
+    - "api.external.com"  # 外部 API 域名
   - port:
-      number: 3306
+      number: 3306  # 数据库端口
       protocol: TCP
       name: mysql
     hosts:
-    - "./database-service"
-  outboundTrafficPolicy:
-    mode: REGISTRY_ONLY
+    - "./database-service"  # 当前命名空间的数据库服务
+  outboundTrafficPolicy:  # 出站流量策略
+    mode: REGISTRY_ONLY  # 模式：仅允许访问服务注册表中的服务（白名单模式）
 ---
 # Sidecar Template - Namespace-wide Configuration
+# Sidecar 模板 - 命名空间级别配置
+# 作用：为整个命名空间设置统一的 Sidecar 配置，简化大规模服务的网络管理
 apiVersion: networking.istio.io/v1beta1
 kind: Sidecar
 metadata:
-  name: namespace-sidecar
-  namespace: production
+  name: namespace-sidecar  # 命名空间 Sidecar 配置名称
+  namespace: production  # 生产环境命名空间
 spec:
-  egress:
-  - hosts:
-    - "./*"
-    - "istio-system/*"
-    - "kube-system/kube-dns"
-  - port:
+  # 无工作负载选择器表示应用到整个命名空间的所有工作负载
+  egress:  # 命名空间级别出站配置
+  - hosts:  # 基本服务访问权限
+    - "./*"  # 当前命名空间的所有服务
+    - "istio-system/*"  # Istio 系统服务
+    - "kube-system/kube-dns"  # Kubernetes DNS 服务
+  - port:  # 外部 HTTPS 服务访问
       number: 443
       protocol: HTTPS
       name: external-https
-    hosts:
-    - "external-apis.com"
-    - "monitoring.company.com"
-  outboundTrafficPolicy:
-    mode: ALLOW_ANY
+    hosts:  # 允许访问的外部服务列表
+    - "external-apis.com"  # 外部 API 服务
+    - "monitoring.company.com"  # 监控服务
+  outboundTrafficPolicy:  # 出站流量策略
+    mode: ALLOW_ANY  # 模式：允许访问任何外部服务（黑名单模式）

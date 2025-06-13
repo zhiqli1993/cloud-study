@@ -1,91 +1,101 @@
 # ServiceEntry Template - External HTTP Service
-apiVersion: networking.istio.io/v1beta1
-kind: ServiceEntry
+# ServiceEntry 模板 - 外部 HTTP 服务配置
+# 作用：将外部服务注册到服务网格中，使网格内服务能够访问外部服务并应用流量策略
+apiVersion: networking.istio.io/v1beta1  # API 版本
+kind: ServiceEntry  # 资源类型：ServiceEntry，用于添加外部服务到内部服务注册表
 metadata:
-  name: external-http-service
-  namespace: default
+  name: external-http-service  # ServiceEntry 名称
+  namespace: default  # 命名空间
 spec:
-  hosts:
-  - httpbin.org
-  ports:
-  - number: 80
-    name: http
-    protocol: HTTP
-  - number: 443
-    name: https
-    protocol: HTTPS
-  location: MESH_EXTERNAL
-  resolution: DNS
+  hosts:  # 主机列表：外部服务的主机名或域名
+  - httpbin.org  # 外部 HTTP 测试服务域名
+  ports:  # 端口配置：定义外部服务的可访问端口
+  - number: 80  # 端口号：HTTP 标准端口
+    name: http  # 端口名称：HTTP 服务标识
+    protocol: HTTP  # 协议类型：HTTP 协议
+  - number: 443  # 端口号：HTTPS 标准端口
+    name: https  # 端口名称：HTTPS 服务标识
+    protocol: HTTPS  # 协议类型：HTTPS 协议
+  location: MESH_EXTERNAL  # 服务位置：外部服务（位于服务网格之外）
+  resolution: DNS  # 服务发现方式：通过 DNS 解析获取服务端点IP地址
 ---
 # ServiceEntry Template - External TCP Service
+# ServiceEntry 模板 - 外部 TCP 服务配置
+# 作用：为外部 TCP 服务（如数据库）提供服务网格访问能力，支持流量管理和监控
 apiVersion: networking.istio.io/v1beta1
 kind: ServiceEntry
 metadata:
-  name: external-tcp-service
+  name: external-tcp-service  # 外部 TCP 服务名称
   namespace: default
 spec:
-  hosts:
-  - tcp-service.external.com
-  ports:
-  - number: 3306
-    name: mysql
-    protocol: TCP
-  location: MESH_EXTERNAL
-  resolution: DNS
+  hosts:  # 外部 TCP 服务主机名
+  - tcp-service.external.com  # 外部 TCP 服务域名
+  ports:  # TCP 端口配置
+  - number: 3306  # MySQL 数据库默认端口
+    name: mysql  # 端口名称：MySQL 服务标识
+    protocol: TCP  # 协议类型：原始 TCP 协议
+  location: MESH_EXTERNAL  # 服务位置：外部服务
+  resolution: DNS  # 地址解析：通过 DNS 查询获取 IP 地址
 ---
 # ServiceEntry Template - External Service with Static IPs
+# ServiceEntry 模板 - 具有静态 IP 的外部服务配置
+# 作用：为已知 IP 地址的外部服务提供静态端点配置，适用于内网服务或固定 IP 的外部服务
 apiVersion: networking.istio.io/v1beta1
 kind: ServiceEntry
 metadata:
-  name: external-static-service
+  name: external-static-service  # 静态外部服务名称
   namespace: default
 spec:
-  hosts:
-  - static-service.external.com
-  ports:
-  - number: 443
-    name: https
-    protocol: HTTPS
-  location: MESH_EXTERNAL
-  resolution: STATIC
-  endpoints:
-  - address: 192.168.1.100
-  - address: 192.168.1.101
+  hosts:  # 外部服务主机名
+  - static-service.external.com  # 外部服务域名
+  ports:  # 端口配置
+  - number: 443  # HTTPS 端口
+    name: https  # 端口名称
+    protocol: HTTPS  # HTTPS 协议
+  location: MESH_EXTERNAL  # 服务位置：外部服务
+  resolution: STATIC  # 地址解析：使用静态配置的端点，不进行 DNS 查询
+  endpoints:  # 静态端点列表：手动指定服务的 IP 地址
+  - address: 192.168.1.100  # 第一个服务实例的 IP 地址
+  - address: 192.168.1.101  # 第二个服务实例的 IP 地址（支持负载均衡）
 ---
 # ServiceEntry Template - VM Workload
+# ServiceEntry 模板 - 虚拟机工作负载配置
+# 作用：将运行在虚拟机上的服务集成到服务网格中，实现混合部署架构
 apiVersion: networking.istio.io/v1beta1
 kind: ServiceEntry
 metadata:
-  name: vm-workload
+  name: vm-workload  # 虚拟机工作负载名称
   namespace: default
 spec:
-  hosts:
-  - vm-service.local
-  ports:
-  - number: 8080
-    name: http
-    protocol: HTTP
-  location: MESH_EXTERNAL
-  resolution: STATIC
-  endpoints:
-  - address: 10.0.0.100
-    network: vm-network
-    locality: region1/zone1
-    ports:
-      http: 8080
+  hosts:  # 虚拟机服务主机名
+  - vm-service.local  # 本地虚拟机服务域名
+  ports:  # 端口配置
+  - number: 8080  # 服务端口
+    name: http  # HTTP 服务标识
+    protocol: HTTP  # HTTP 协议
+  location: MESH_EXTERNAL  # 服务位置：外部服务（虚拟机位于 K8s 集群外）
+  resolution: STATIC  # 静态端点解析
+  endpoints:  # 虚拟机端点配置
+  - address: 10.0.0.100  # 虚拟机 IP 地址
+    network: vm-network  # 网络标识：虚拟机所在的网络
+    locality: region1/zone1  # 地理位置：用于就近路由和故障转移
+    ports:  # 端点端口映射
+      http: 8080  # HTTP 服务在此端点上的实际端口
 ---
 # ServiceEntry Template - gRPC External Service
+# ServiceEntry 模板 - 外部 gRPC 服务配置
+# 作用：将外部 gRPC 服务注册到服务网格，支持 gRPC 特有的负载均衡和流量管理
 apiVersion: networking.istio.io/v1beta1
 kind: ServiceEntry
 metadata:
-  name: external-grpc-service
+  name: external-grpc-service  # 外部 gRPC 服务名称
   namespace: default
 spec:
-  hosts:
-  - grpc-service.external.com
-  ports:
-  - number: 9090
-    name: grpc
-    protocol: GRPC
-  location: MESH_EXTERNAL
-  resolution: DNS
+  hosts:  # gRPC 服务主机名
+  - grpc-service.external.com  # 外部 gRPC 服务域名
+  ports:  # gRPC 端口配置
+  - number: 9090  # gRPC 服务端口（常用端口）
+    name: grpc  # 端口名称：gRPC 服务标识
+    protocol: GRPC  # 协议类型：gRPC 协议，支持 HTTP/2 和特殊的负载均衡策略
+  location: MESH_EXTERNAL  # 服务位置：外部服务
+  resolution: DNS  # 地址解析：通过 DNS 解析服务地址

@@ -1,76 +1,80 @@
 # DestinationRule Template - Load Balancing and Circuit Breaker
-apiVersion: networking.istio.io/v1beta1
-kind: DestinationRule
+# DestinationRule 模板 - 负载均衡和熔断器配置
+# 作用：定义服务的流量策略，包括负载均衡、连接池、熔断器和服务子集划分
+apiVersion: networking.istio.io/v1beta1  # API 版本
+kind: DestinationRule  # 资源类型：DestinationRule，用于配置服务的流量策略
 metadata:
-  name: example-destination-rule
-  namespace: default
+  name: example-destination-rule  # DestinationRule 名称
+  namespace: default  # 命名空间
 spec:
-  host: example-service
-  trafficPolicy:
-    loadBalancer:
-      simple: LEAST_CONN
-    connectionPool:
-      tcp:
-        maxConnections: 10
-        connectTimeout: 30s
-        keepAlive:
-          time: 7200s
-          interval: 75s
-      http:
-        http1MaxPendingRequests: 10
-        http2MaxRequests: 100
-        maxRequestsPerConnection: 2
-        maxRetries: 3
-        idleTimeout: 90s
-        h2UpgradePolicy: UPGRADE
-    circuitBreaker:
-      consecutiveGatewayErrors: 5
-      consecutive5xxErrors: 5
-      interval: 30s
-      baseEjectionTime: 30s
-      maxEjectionPercent: 50
-      minHealthPercent: 30
-  subsets:
-  - name: v1
-    labels:
-      version: v1
-    trafficPolicy:
+  host: example-service  # 目标服务：应用此规则的服务主机名
+  trafficPolicy:  # 流量策略：定义如何处理到此服务的流量
+    loadBalancer:  # 负载均衡策略
+      simple: LEAST_CONN  # 负载均衡算法：最少连接数，将请求路由到连接数最少的实例
+    connectionPool:  # 连接池配置：控制客户端到上游服务的连接
+      tcp:  # TCP 连接池设置
+        maxConnections: 10  # 最大连接数：限制到目标服务的并发连接数
+        connectTimeout: 30s  # 连接超时：建立连接的最大等待时间
+        keepAlive:  # TCP Keep-Alive 设置
+          time: 7200s  # 保活时间：连接空闲多长时间后开始发送保活探测
+          interval: 75s  # 保活间隔：保活探测包的发送间隔
+      http:  # HTTP 连接池设置
+        http1MaxPendingRequests: 10  # HTTP/1.1 最大挂起请求数
+        http2MaxRequests: 100  # HTTP/2 最大并发请求数
+        maxRequestsPerConnection: 2  # 每个连接的最大请求数
+        maxRetries: 3  # 最大重试次数
+        idleTimeout: 90s  # 空闲超时：连接空闲多长时间后关闭
+        h2UpgradePolicy: UPGRADE  # HTTP/2 升级策略：自动升级到 HTTP/2
+    circuitBreaker:  # 熔断器配置：防止故障服务影响整个系统
+      consecutiveGatewayErrors: 5  # 连续网关错误数：触发熔断的连续网关错误次数
+      consecutive5xxErrors: 5  # 连续 5xx 错误数：触发熔断的连续服务器错误次数
+      interval: 30s  # 分析间隔：熔断器分析错误率的时间窗口
+      baseEjectionTime: 30s  # 基础剔除时间：实例被剔除的最小时间
+      maxEjectionPercent: 50  # 最大剔除百分比：最多剔除 50% 的实例
+      minHealthPercent: 30  # 最小健康百分比：保证至少 30% 的实例可用
+  subsets:  # 服务子集：将服务实例划分为不同的子集
+  - name: v1  # 子集名称：v1 版本
+    labels:  # 标签选择器：匹配具有指定标签的实例
+      version: v1  # 版本标签
+    trafficPolicy:  # 子集特定的流量策略
       loadBalancer:
-        simple: ROUND_ROBIN
-  - name: v2
+        simple: ROUND_ROBIN  # v1 版本使用轮询负载均衡
+  - name: v2  # 子集名称：v2 版本
     labels:
       version: v2
     trafficPolicy:
       loadBalancer:
-        simple: RANDOM
-  - name: canary
+        simple: RANDOM  # v2 版本使用随机负载均衡
+  - name: canary  # 子集名称：金丝雀版本
     labels:
-      version: canary
+      version: canary  # 金丝雀版本标签
     trafficPolicy:
       loadBalancer:
-        simple: PASSTHROUGH
+        simple: PASSTHROUGH  # 金丝雀版本直接透传，不进行负载均衡
 ---
 # DestinationRule Template - mTLS Configuration
+# DestinationRule 模板 - 双向 TLS 配置
+# 作用：配置服务间通信的 mTLS 安全策略，确保服务间通信的安全性和身份验证
 apiVersion: networking.istio.io/v1beta1
 kind: DestinationRule
 metadata:
-  name: mtls-destination-rule
+  name: mtls-destination-rule  # mTLS DestinationRule 名称
   namespace: default
 spec:
-  host: secure-service
-  trafficPolicy:
-    tls:
-      mode: ISTIO_MUTUAL
-      caCertificates: /etc/ssl/certs/ca.pem
-      clientCertificate: /etc/ssl/certs/client.pem
-      privateKey: /etc/ssl/private/client-key.pem
-  subsets:
-  - name: secure
+  host: secure-service  # 目标安全服务
+  trafficPolicy:  # 流量策略
+    tls:  # TLS 配置：定义客户端如何与服务建立安全连接
+      mode: ISTIO_MUTUAL  # TLS 模式：Istio 管理的双向 TLS，自动处理证书轮换
+      caCertificates: /etc/ssl/certs/ca.pem  # CA 证书路径：用于验证服务器证书
+      clientCertificate: /etc/ssl/certs/client.pem  # 客户端证书：客户端身份证明
+      privateKey: /etc/ssl/private/client-key.pem  # 客户端私钥：与客户端证书配对
+  subsets:  # 安全服务子集
+  - name: secure  # 高安全子集名称
     labels:
-      security: high
+      security: high  # 高安全级别标签
     trafficPolicy:
       tls:
-        mode: MUTUAL
-        caCertificates: /etc/ssl/certs/ca.pem
-        clientCertificate: /etc/ssl/certs/client.pem
-        privateKey: /etc/ssl/private/client-key.pem
+        mode: MUTUAL  # TLS 模式：手动管理的双向 TLS
+        caCertificates: /etc/ssl/certs/ca.pem  # CA 证书路径
+        clientCertificate: /etc/ssl/certs/client.pem  # 客户端证书路径
+        privateKey: /etc/ssl/private/client-key.pem  # 客户端私钥路径

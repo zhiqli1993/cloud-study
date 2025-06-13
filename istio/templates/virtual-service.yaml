@@ -1,64 +1,68 @@
 # VirtualService Template - HTTP Traffic Routing
-apiVersion: networking.istio.io/v1beta1
-kind: VirtualService
+# VirtualService 模板 - HTTP 流量路由配置
+# 作用：定义服务网格内的流量路由规则，实现高级流量管理功能（负载均衡、故障注入、重试等）
+apiVersion: networking.istio.io/v1beta1  # API 版本：Istio 网络 API 版本
+kind: VirtualService  # 资源类型：VirtualService，用于配置流量路由规则
 metadata:
-  name: example-virtual-service
-  namespace: default
+  name: example-virtual-service  # VirtualService 名称
+  namespace: default  # 命名空间
 spec:
-  hosts:
-  - example-service
-  - example.com
-  http:
-  - match:
-    - headers:
-        end-user:
-          exact: jason
-    route:
+  hosts:  # 主机列表：定义此路由规则适用的服务主机
+  - example-service  # 内部服务名称
+  - example.com  # 外部域名
+  http:  # HTTP 路由规则列表
+  - match:  # 匹配条件：基于请求头的路由
+    - headers:  # 请求头匹配
+        end-user:  # 自定义请求头名称
+          exact: jason  # 精确匹配：请求头值必须完全等于 "jason"
+    route:  # 路由目标
     - destination:
-        host: example-service
-        subset: v2
-  - match:
+        host: example-service  # 目标服务主机
+        subset: v2  # 服务子集：路由到 v2 版本的实例
+  - match:  # 匹配条件：基于 URI 路径的路由
     - uri:
-        prefix: /api/v1
-    route:
+        prefix: /api/v1  # 路径前缀匹配：匹配以 /api/v1 开头的请求
+    route:  # 路由目标：支持流量分割和故障注入
     - destination:
         host: example-service
-        subset: v1
-      weight: 90
+        subset: v1  # v1 版本服务
+      weight: 90  # 权重：90% 的流量路由到 v1
     - destination:
         host: example-service
-        subset: v2
-      weight: 10
-    fault:
-      delay:
+        subset: v2  # v2 版本服务
+      weight: 10  # 权重：10% 的流量路由到 v2（金丝雀发布）
+    fault:  # 故障注入：用于测试系统的容错能力
+      delay:  # 延迟注入
         percentage:
-          value: 0.1
-        fixedDelay: 5s
-  - route:
+          value: 0.1  # 注入比例：0.1% 的请求会被延迟
+        fixedDelay: 5s  # 固定延迟时间：5秒
+  - route:  # 默认路由规则：处理其他所有请求
     - destination:
         host: example-service
-        subset: v1
-    timeout: 10s
-    retries:
-      attempts: 3
-      perTryTimeout: 2s
-      retryOn: gateway-error,connect-failure,refused-stream
+        subset: v1  # 默认路由到 v1 版本
+    timeout: 10s  # 超时设置：请求超时时间为 10 秒
+    retries:  # 重试策略：提高服务可用性
+      attempts: 3  # 重试次数：最大重试 3 次
+      perTryTimeout: 2s  # 单次重试超时：每次重试的超时时间
+      retryOn: gateway-error,connect-failure,refused-stream  # 重试条件：指定触发重试的错误类型
 ---
 # VirtualService Template - TCP Traffic Routing
+# VirtualService 模板 - TCP 流量路由配置
+# 作用：为 TCP 协议提供流量路由，适用于数据库、消息队列等非 HTTP 服务
 apiVersion: networking.istio.io/v1beta1
 kind: VirtualService
 metadata:
-  name: tcp-virtual-service
+  name: tcp-virtual-service  # TCP VirtualService 名称
   namespace: default
 spec:
-  hosts:
-  - tcp-service
-  tcp:
-  - match:
-    - port: 3306
-    route:
+  hosts:  # 主机列表：TCP 服务的主机名
+  - tcp-service  # TCP 服务名称
+  tcp:  # TCP 路由规则列表
+  - match:  # 匹配条件：基于端口的路由
+    - port: 3306  # 端口匹配：匹配 3306 端口的连接（MySQL 默认端口）
+    route:  # 路由目标
     - destination:
-        host: tcp-service
+        host: tcp-service  # 目标 TCP 服务
         port:
-          number: 3306
-        subset: primary
+          number: 3306  # 目标端口号
+        subset: primary  # 服务子集：路由到主要实例（如主数据库）

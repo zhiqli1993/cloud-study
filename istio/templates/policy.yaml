@@ -1,107 +1,122 @@
 # RequestAuthentication Template - JWT Authentication
-apiVersion: security.istio.io/v1beta1
-kind: RequestAuthentication
+# RequestAuthentication 模板 - JWT 身份认证配置
+# 作用：配置 JWT（JSON Web Token）身份验证，验证请求中的 JWT 令牌有效性
+apiVersion: security.istio.io/v1beta1  # API 版本：Istio 安全 API 版本
+kind: RequestAuthentication  # 资源类型：RequestAuthentication，用于请求级别的身份认证
 metadata:
-  name: jwt-auth
-  namespace: default
+  name: jwt-auth  # JWT 认证策略名称
+  namespace: default  # 命名空间
 spec:
-  selector:
+  selector:  # 选择器：指定应用此认证策略的工作负载
     matchLabels:
-      app: example-app
-  jwtRules:
-  - issuer: "https://auth.example.com"
-    jwksUri: "https://auth.example.com/.well-known/jwks.json"
-    audiences:
-    - "example-service"
-    forwardOriginalToken: true
-  - issuer: "https://accounts.google.com"
-    jwksUri: "https://www.googleapis.com/oauth2/v3/certs"
-    audiences:
-    - "google-client-id"
+      app: example-app  # 标签匹配：选择带有 app=example-app 标签的服务
+  jwtRules:  # JWT 规则列表：定义如何验证 JWT 令牌
+  - issuer: "https://auth.example.com"  # 令牌颁发者：验证 JWT 的 iss 声明
+    jwksUri: "https://auth.example.com/.well-known/jwks.json"  # JWKS URI：获取公钥的端点
+    audiences:  # 受众列表：验证 JWT 的 aud 声明
+    - "example-service"  # 目标服务名称
+    forwardOriginalToken: true  # 转发原始令牌：将验证后的 JWT 转发给上游服务
+  - issuer: "https://accounts.google.com"  # Google OAuth 颁发者
+    jwksUri: "https://www.googleapis.com/oauth2/v3/certs"  # Google 公钥端点
+    audiences:  # Google OAuth 客户端 ID
+    - "google-client-id"  # Google 应用的客户端标识符
 ---
 # AuthorizationPolicy Template - RBAC Authorization
+# AuthorizationPolicy 模板 - 基于角色的访问控制（RBAC）授权配置
+# 作用：定义细粒度的访问控制规则，基于身份、操作和条件控制服务访问权限
 apiVersion: security.istio.io/v1beta1
-kind: AuthorizationPolicy
+kind: AuthorizationPolicy  # 资源类型：AuthorizationPolicy，用于访问控制
 metadata:
-  name: rbac-policy
+  name: rbac-policy  # RBAC 策略名称
   namespace: default
 spec:
-  selector:
+  selector:  # 选择器：指定应用此授权策略的工作负载
     matchLabels:
-      app: example-app
-  rules:
-  - from:
+      app: example-app  # 目标应用选择器
+  rules:  # 授权规则列表：定义访问控制条件
+  - from:  # 来源条件：定义请求来源的身份验证要求
+    - source:  # 源身份：基于服务账户的身份验证
+        principals: ["cluster.local/ns/default/sa/admin"]  # 主体：管理员服务账户
+    - source:  # 源命名空间：基于命名空间的访问控制
+        namespaces: ["admin-namespace"]  # 允许来自管理命名空间的请求
+    to:  # 目标条件：定义允许的操作
+    - operation:  # 操作限制：指定允许的 HTTP 方法和路径
+        methods: ["GET", "POST"]  # HTTP 方法：允许 GET 和 POST 请求
+        paths: ["/api/admin/*"]  # 路径匹配：限制访问管理 API 路径
+    when:  # 条件判断：额外的访问控制条件
+    - key: request.headers[user-role]  # 条件键：检查请求头中的用户角色
+      values: ["admin", "super-admin"]  # 允许的角色：管理员或超级管理员
+  - from:  # 第二个规则：普通用户访问权限
     - source:
-        principals: ["cluster.local/ns/default/sa/admin"]
-    - source:
-        namespaces: ["admin-namespace"]
+        principals: ["cluster.local/ns/default/sa/user"]  # 普通用户服务账户
     to:
     - operation:
-        methods: ["GET", "POST"]
-        paths: ["/api/admin/*"]
+        methods: ["GET"]  # 只允许 GET 请求
+        paths: ["/api/user/*"]  # 限制访问用户 API 路径
     when:
-    - key: request.headers[user-role]
-      values: ["admin", "super-admin"]
-  - from:
-    - source:
-        principals: ["cluster.local/ns/default/sa/user"]
-    to:
-    - operation:
-        methods: ["GET"]
-        paths: ["/api/user/*"]
-    when:
-    - key: source.ip
-      values: ["10.0.0.0/8", "192.168.0.0/16"]
+    - key: source.ip  # IP 地址限制：基于源 IP 的访问控制
+      values: ["10.0.0.0/8", "192.168.0.0/16"]  # 允许的 IP 段：内网地址范围
 ---
 # AuthorizationPolicy Template - Deny All Policy
+# AuthorizationPolicy 模板 - 拒绝所有访问策略
+# 作用：默认拒绝所有访问请求，用于实现最严格的安全策略（白名单模式）
 apiVersion: security.istio.io/v1beta1
 kind: AuthorizationPolicy
 metadata:
-  name: deny-all
+  name: deny-all  # 拒绝所有策略名称
   namespace: default
 spec:
-  selector:
+  selector:  # 选择器：指定应用拒绝策略的服务
     matchLabels:
-      app: secure-app
+      app: secure-app  # 高安全级别应用
   # Empty rules means deny all
+  # 空规则表示拒绝所有访问：没有规则意味着没有请求被允许通过
 ---
 # AuthorizationPolicy Template - Allow All Policy
+# AuthorizationPolicy 模板 - 允许所有访问策略
+# 作用：允许所有访问请求，通常用于公开服务或开发环境
 apiVersion: security.istio.io/v1beta1
 kind: AuthorizationPolicy
 metadata:
-  name: allow-all
+  name: allow-all  # 允许所有策略名称
   namespace: default
 spec:
-  selector:
+  selector:  # 选择器：指定应用允许策略的服务
     matchLabels:
-      app: public-app
-  rules:
+      app: public-app  # 公开应用服务
+  rules:  # 授权规则
   - {} # Empty rule means allow all
+       # 空规则表示允许所有访问：不设置任何限制条件
 ---
 # PeerAuthentication Template - mTLS Policy
+# PeerAuthentication 模板 - 双向 TLS 策略配置
+# 作用：配置服务间通信的 mTLS 认证模式，确保服务间通信的安全性
 apiVersion: security.istio.io/v1beta1
-kind: PeerAuthentication
+kind: PeerAuthentication  # 资源类型：PeerAuthentication，用于对等身份认证
 metadata:
-  name: mtls-policy
+  name: mtls-policy  # mTLS 策略名称
   namespace: default
 spec:
-  selector:
+  selector:  # 选择器：指定应用 mTLS 策略的服务
     matchLabels:
-      app: secure-service
-  mtls:
-    mode: STRICT
-  portLevelMtls:
-    8080:
-      mode: PERMISSIVE
-    9090:
-      mode: DISABLE
+      app: secure-service  # 安全服务标签
+  mtls:  # mTLS 配置：整个服务的默认 mTLS 模式
+    mode: STRICT  # 严格模式：强制要求所有连接使用 mTLS
+  portLevelMtls:  # 端口级别 mTLS：为特定端口设置不同的 mTLS 模式
+    8080:  # 端口 8080
+      mode: PERMISSIVE  # 宽松模式：同时接受 mTLS 和明文连接
+    9090:  # 端口 9090
+      mode: DISABLE  # 禁用模式：禁用 mTLS，只接受明文连接
 ---
 # PeerAuthentication Template - Namespace-wide mTLS
+# PeerAuthentication 模板 - 命名空间级别 mTLS 配置
+# 作用：为整个命名空间设置统一的 mTLS 策略，简化安全配置管理
 apiVersion: security.istio.io/v1beta1
 kind: PeerAuthentication
 metadata:
-  name: namespace-mtls
-  namespace: production
+  name: namespace-mtls  # 命名空间 mTLS 策略名称
+  namespace: production  # 生产环境命名空间
 spec:
-  mtls:
-    mode: STRICT
+  # 无选择器表示应用到整个命名空间的所有服务
+  mtls:  # mTLS 配置
+    mode: STRICT  # 严格模式：命名空间内所有服务间通信都必须使用 mTLS

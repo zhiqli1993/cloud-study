@@ -1,185 +1,196 @@
 # Telemetry Template - Custom Metrics
-apiVersion: telemetry.istio.io/v1alpha1
-kind: Telemetry
+# Telemetry 模板 - 自定义指标配置
+# 作用：配置自定义指标收集，用于监控和观察服务性能指标
+apiVersion: telemetry.istio.io/v1alpha1  # API 版本：Istio 遥测 API 版本
+kind: Telemetry  # 资源类型：Telemetry，用于配置遥测数据收集
 metadata:
-  name: custom-metrics
-  namespace: default
+  name: custom-metrics  # 自定义指标配置名称
+  namespace: default  # 命名空间
 spec:
-  selector:
+  selector:  # 选择器：指定应用此遥测配置的工作负载
     matchLabels:
-      app: example-app
-  metrics:
-  - providers:
-    - name: prometheus
-  - overrides:
+      app: example-app  # 目标应用选择器
+  metrics:  # 指标配置：定义如何收集和处理指标
+  - providers:  # 提供者：指定指标存储和处理系统
+    - name: prometheus  # Prometheus 指标提供者
+  - overrides:  # 覆盖配置：自定义特定指标的行为
+    - match:  # 匹配条件：指定要修改的指标
+        metric: requests_total  # 指标名称：总请求数指标
+      tagOverrides:  # 标签覆盖：修改或添加指标标签
+        request_protocol:  # 请求协议标签
+          value: "http"  # 固定值：将协议标签设置为 HTTP
     - match:
-        metric: requests_total
-      tagOverrides:
-        request_protocol:
-          value: "http"
-    - match:
-        metric: request_duration_milliseconds
-      buckets:
-      - 0.5
-      - 1
-      - 5
-      - 10
-      - 25
-      - 50
-      - 100
-      - 250
-      - 500
-      - 1000
-      - 2500
-      - 5000
-      - 10000
-  - dimensions:
-      source_service: source.workload.name | "unknown"
-      source_version: source.labels["version"] | "unknown"
-      destination_service: destination.service.name | "unknown"
-      destination_version: destination.labels["version"] | "unknown"
-      request_protocol: request.protocol | "unknown"
-      response_code: response.code | 200
+        metric: request_duration_milliseconds  # 指标名称：请求持续时间指标
+      buckets:  # 直方图分桶：定义延迟测量的时间桶（毫秒）
+      - 0.5    # 0.5ms
+      - 1      # 1ms
+      - 5      # 5ms
+      - 10     # 10ms
+      - 25     # 25ms
+      - 50     # 50ms
+      - 100    # 100ms
+      - 250    # 250ms
+      - 500    # 500ms
+      - 1000   # 1s
+      - 2500   # 2.5s
+      - 5000   # 5s
+      - 10000  # 10s
+  - dimensions:  # 维度配置：定义指标的标签维度
+      source_service: source.workload.name | "unknown"  # 源服务：源工作负载名称
+      source_version: source.labels["version"] | "unknown"  # 源版本：源服务版本
+      destination_service: destination.service.name | "unknown"  # 目标服务：目标服务名称
+      destination_version: destination.labels["version"] | "unknown"  # 目标版本：目标服务版本
+      request_protocol: request.protocol | "unknown"  # 请求协议：HTTP/gRPC等
+      response_code: response.code | 200  # 响应码：HTTP状态码，默认200
 ---
 # Telemetry Template - Distributed Tracing
+# Telemetry 模板 - 分布式追踪配置
+# 作用：配置分布式追踪，用于跟踪请求在服务网格中的完整调用链路
 apiVersion: telemetry.istio.io/v1alpha1
 kind: Telemetry
 metadata:
-  name: tracing-config
+  name: tracing-config  # 追踪配置名称
   namespace: default
 spec:
-  selector:
+  selector:  # 选择器：指定应用追踪的服务
     matchLabels:
       app: example-app
-  tracing:
-  - providers:
-    - name: jaeger
-  - customTags:
-      custom_header:
+  tracing:  # 追踪配置：定义分布式追踪行为
+  - providers:  # 追踪提供者：指定追踪数据存储系统
+    - name: jaeger  # Jaeger 分布式追踪系统
+  - customTags:  # 自定义标签：为追踪 span 添加自定义标签
+      custom_header:  # 自定义请求头标签
         header:
-          name: x-custom-header
-          defaultValue: "default"
-      user_id:
+          name: x-custom-header  # 请求头名称
+          defaultValue: "default"  # 默认值：当请求头不存在时使用
+      user_id:  # 用户ID标签
         header:
-          name: x-user-id
-      request_id:
+          name: x-user-id  # 用户ID请求头
+      request_id:  # 请求ID标签
         header:
-          name: x-request-id
-      source_app:
-        literal:
-          value: "example-app"
-  - randomSamplingPercentage: 1.0
+          name: x-request-id  # 请求ID请求头
+      source_app:  # 源应用标签
+        literal:  # 字面值：固定值标签
+          value: "example-app"  # 应用名称
+  - randomSamplingPercentage: 1.0  # 随机采样百分比：1.0% 的请求将被追踪
 ---
 # Telemetry Template - Access Logging
+# Telemetry 模板 - 访问日志配置
+# 作用：配置结构化访问日志，记录详细的请求/响应信息用于审计和分析
 apiVersion: telemetry.istio.io/v1alpha1
 kind: Telemetry
 metadata:
-  name: access-logging
+  name: access-logging  # 访问日志配置名称
   namespace: default
 spec:
-  selector:
+  selector:  # 选择器：指定应用访问日志的服务
     matchLabels:
       app: example-app
-  accessLogging:
-  - providers:
-    - name: otel
-  - format:
-      labels:
-        source_app: source.workload.name
-        source_version: source.labels["version"]
-        destination_app: destination.workload.name
-        destination_version: destination.labels["version"]
-        method: request.method
-        url: request.url_path
-        protocol: request.protocol
-        response_code: response.code
-        response_flags: response.flags
-        user_agent: request.headers["user-agent"]
-        request_id: request.headers["x-request-id"]
-        authority: request.headers[":authority"]
-        forwarded_for: request.headers["x-forwarded-for"]
+  accessLogging:  # 访问日志配置：定义日志记录行为
+  - providers:  # 日志提供者：指定日志处理系统
+    - name: otel  # OpenTelemetry 日志提供者
+  - format:  # 日志格式：定义日志字段和结构
+      labels:  # 标签格式：使用键值对形式记录日志
+        source_app: source.workload.name  # 源应用：请求来源的工作负载名称
+        source_version: source.labels["version"]  # 源版本：请求来源的版本标签
+        destination_app: destination.workload.name  # 目标应用：请求目标的工作负载名称
+        destination_version: destination.labels["version"]  # 目标版本：请求目标的版本标签
+        method: request.method  # HTTP 方法：GET、POST等
+        url: request.url_path  # URL 路径：请求的路径部分
+        protocol: request.protocol  # 协议：HTTP/1.1、HTTP/2等
+        response_code: response.code  # 响应码：HTTP状态码
+        response_flags: response.flags  # 响应标志：Envoy响应标志
+        user_agent: request.headers["user-agent"]  # 用户代理：客户端信息
+        request_id: request.headers["x-request-id"]  # 请求ID：唯一请求标识符
+        authority: request.headers[":authority"]  # 权威：HTTP/2 :authority 头
+        forwarded_for: request.headers["x-forwarded-for"]  # 转发地址：原始客户端IP
 ---
 # Telemetry Template - Namespace-wide Telemetry
+# Telemetry 模板 - 命名空间级别遥测配置
+# 作用：为整个命名空间设置统一的遥测策略，简化大规模服务的监控配置
 apiVersion: telemetry.istio.io/v1alpha1
 kind: Telemetry
 metadata:
-  name: namespace-telemetry
-  namespace: production
+  name: namespace-telemetry  # 命名空间遥测配置名称
+  namespace: production  # 生产环境命名空间
 spec:
-  metrics:
+  # 无选择器表示应用到整个命名空间的所有服务
+  metrics:  # 命名空间级别指标配置
   - providers:
-    - name: prometheus
-  - overrides:
+    - name: prometheus  # 使用 Prometheus 收集指标
+  - overrides:  # 指标覆盖设置
     - match:
-        metric: ALL_METRICS
-      disabled: false
-  tracing:
+        metric: ALL_METRICS  # 匹配所有指标
+      disabled: false  # 启用所有指标收集
+  tracing:  # 命名空间级别追踪配置
   - providers:
-    - name: jaeger
-  - randomSamplingPercentage: 10.0
-  accessLogging:
+    - name: jaeger  # 使用 Jaeger 进行分布式追踪
+  - randomSamplingPercentage: 10.0  # 采样率：10% 的请求将被追踪
+  accessLogging:  # 命名空间级别访问日志配置
   - providers:
-    - name: otel
+    - name: otel  # 使用 OpenTelemetry 处理访问日志
   - format:
-      text: |
+      text: |  # 文本格式：类似 Apache/Nginx 的访问日志格式
         [%START_TIME%] "%REQ(:METHOD)% %REQ(X-ENVOY-ORIGINAL-PATH?:PATH)% %PROTOCOL%"
         %RESPONSE_CODE% %RESPONSE_FLAGS% %BYTES_RECEIVED% %BYTES_SENT%
         %DURATION% %RESP(X-ENVOY-UPSTREAM-SERVICE-TIME)% "%REQ(X-FORWARDED-FOR)%"
         "%REQ(USER-AGENT)%" "%REQ(X-REQUEST-ID)%" "%REQ(:AUTHORITY)%" "%UPSTREAM_HOST%"
 ---
 # Telemetry Template - Workload-specific Telemetry
+# Telemetry 模板 - 工作负载特定遥测配置
+# 作用：为关键服务配置高精度遥测，提供完整的监控、追踪和日志记录
 apiVersion: telemetry.istio.io/v1alpha1
 kind: Telemetry
 metadata:
-  name: workload-telemetry
+  name: workload-telemetry  # 工作负载遥测配置名称
   namespace: default
 spec:
-  selector:
+  selector:  # 精确选择器：针对特定的关键服务
     matchLabels:
-      app: critical-service
-      version: v1
-  metrics:
+      app: critical-service  # 关键服务标签
+      version: v1  # 版本标签：指定服务版本
+  metrics:  # 关键服务指标配置
   - providers:
-    - name: prometheus
-  - dimensions:
-      source_principal: source.principal | "unknown"
-      destination_principal: destination.principal | "unknown"
-      source_namespace: source.workload.namespace | "unknown"
-      destination_namespace: destination.workload.namespace | "unknown"
-      connection_security_policy: connection.security_policy | "unknown"
-  tracing:
+    - name: prometheus  # 使用 Prometheus 收集指标
+  - dimensions:  # 扩展维度：为关键服务添加更多监控维度
+      source_principal: source.principal | "unknown"  # 源主体：请求来源的身份标识
+      destination_principal: destination.principal | "unknown"  # 目标主体：请求目标的身份标识
+      source_namespace: source.workload.namespace | "unknown"  # 源命名空间：请求来源的命名空间
+      destination_namespace: destination.workload.namespace | "unknown"  # 目标命名空间：请求目标的命名空间
+      connection_security_policy: connection.security_policy | "unknown"  # 连接安全策略：mTLS等安全策略状态
+  tracing:  # 关键服务追踪配置
   - providers:
-    - name: jaeger
-  - customTags:
-      environment:
+    - name: jaeger  # 使用 Jaeger 进行分布式追踪
+  - customTags:  # 环境特定标签：为关键服务添加环境信息
+      environment:  # 环境标签
         literal:
-          value: "production"
-      service_version:
+          value: "production"  # 生产环境标识
+      service_version:  # 服务版本标签
         literal:
-          value: "v1.0.0"
-      cluster:
+          value: "v1.0.0"  # 详细版本号
+      cluster:  # 集群标签
         literal:
-          value: "production-cluster"
-  - randomSamplingPercentage: 100.0
-  accessLogging:
+          value: "production-cluster"  # 集群标识
+  - randomSamplingPercentage: 100.0  # 全量采样：关键服务的所有请求都被追踪
+  accessLogging:  # 关键服务访问日志配置
   - providers:
-    - name: otel
+    - name: otel  # 使用 OpenTelemetry 处理日志
   - format:
-      json:
-        timestamp: "%START_TIME%"
-        method: "%REQ(:METHOD)%"
-        path: "%REQ(X-ENVOY-ORIGINAL-PATH?:PATH)%"
-        protocol: "%PROTOCOL%"
-        response_code: "%RESPONSE_CODE%"
-        response_flags: "%RESPONSE_FLAGS%"
-        bytes_received: "%BYTES_RECEIVED%"
-        bytes_sent: "%BYTES_SENT%"
-        duration: "%DURATION%"
-        upstream_service_time: "%RESP(X-ENVOY-UPSTREAM-SERVICE-TIME)%"
-        x_forwarded_for: "%REQ(X-FORWARDED-FOR)%"
-        user_agent: "%REQ(USER-AGENT)%"
-        request_id: "%REQ(X-REQUEST-ID)%"
-        authority: "%REQ(:AUTHORITY)%"
-        upstream_host: "%UPSTREAM_HOST%"
-        source_app: "%{DOWNSTREAM_LOCAL_ADDRESS}%"
-        destination_app: "%{UPSTREAM_LOCAL_ADDRESS}%"
+      json:  # JSON 格式：结构化日志便于解析和查询
+        timestamp: "%START_TIME%"  # 时间戳：请求开始时间
+        method: "%REQ(:METHOD)%"  # HTTP 方法
+        path: "%REQ(X-ENVOY-ORIGINAL-PATH?:PATH)%"  # 请求路径
+        protocol: "%PROTOCOL%"  # 协议版本
+        response_code: "%RESPONSE_CODE%"  # HTTP 响应码
+        response_flags: "%RESPONSE_FLAGS%"  # Envoy 响应标志
+        bytes_received: "%BYTES_RECEIVED%"  # 接收字节数
+        bytes_sent: "%BYTES_SENT%"  # 发送字节数
+        duration: "%DURATION%"  # 请求总时长
+        upstream_service_time: "%RESP(X-ENVOY-UPSTREAM-SERVICE-TIME)%"  # 上游服务处理时间
+        x_forwarded_for: "%REQ(X-FORWARDED-FOR)%"  # 客户端真实IP
+        user_agent: "%REQ(USER-AGENT)%"  # 用户代理字符串
+        request_id: "%REQ(X-REQUEST-ID)%"  # 唯一请求标识符
+        authority: "%REQ(:AUTHORITY)%"  # HTTP/2 authority 头
+        upstream_host: "%UPSTREAM_HOST%"  # 上游主机地址
+        source_app: "%{DOWNSTREAM_LOCAL_ADDRESS}%"  # 源应用地址
+        destination_app: "%{UPSTREAM_LOCAL_ADDRESS}%"  # 目标应用地址
