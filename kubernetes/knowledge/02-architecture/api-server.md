@@ -361,3 +361,4 @@ curl -k https://localhost:6443/metrics
 
 # 检查 etcd 延迟
 etcdctl endpoint status --cluster -w table
+```

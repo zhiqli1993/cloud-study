@@ -699,3 +699,4 @@ spec:
         - --leader-elect=true
         - --lock-object-name=kube-scheduler
         - --lock-object-namespace=kube-system
+```

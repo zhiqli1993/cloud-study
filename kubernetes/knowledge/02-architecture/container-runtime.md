@@ -830,3 +830,4 @@ crictl rmi --prune
 
 # 查看镜像使用情况
 crictl images | grep -v '<none>'
+```
