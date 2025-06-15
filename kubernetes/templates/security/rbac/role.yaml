@@ -1,0 +1,183 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: ${ROLE_NAME:-${APP_NAME:-my-app}-role}
+  namespace: ${NAMESPACE:-default}
+  labels:
+    app: ${APP_NAME:-my-app}
+    version: ${APP_VERSION:-v1.0.0}
+    environment: ${ENVIRONMENT:-development}
+    component: rbac
+  annotations:
+    rbac.authorization.kubernetes.io/autoupdate: "true"
+    kubernetes.io/description: "Role for ${APP_NAME:-my-app} application"
+rules:
+# Pod 管理权限
+- apiGroups: [""]
+  resources: ["pods"]
+  verbs: ${POD_VERBS:-["get", "list", "watch", "create", "update", "patch", "delete"]}
+  resourceNames: ${POD_RESOURCE_NAMES:-[]}
+
+- apiGroups: [""]
+  resources: ["pods/log"]
+  verbs: ${POD_LOG_VERBS:-["get", "list"]}
+
+- apiGroups: [""]
+  resources: ["pods/exec"]
+  verbs: ${POD_EXEC_VERBS:-["create"]}
+
+- apiGroups: [""]
+  resources: ["pods/portforward"]
+  verbs: ${POD_PORTFORWARD_VERBS:-["create"]}
+
+# Service 管理权限
+- apiGroups: [""]
+  resources: ["services"]
+  verbs: ${SERVICE_VERBS:-["get", "list", "watch", "create", "update", "patch", "delete"]}
+
+- apiGroups: [""]
+  resources: ["services/proxy"]
+  verbs: ${SERVICE_PROXY_VERBS:-["get", "create"]}
+
+- apiGroups: [""]
+  resources: ["endpoints"]
+  verbs: ${ENDPOINTS_VERBS:-["get", "list", "watch"]}
+
+# ConfigMap 和 Secret 权限
+- apiGroups: [""]
+  resources: ["configmaps"]
+  verbs: ${CONFIGMAP_VERBS:-["get", "list", "watch", "create", "update", "patch", "delete"]}
+
+- apiGroups: [""]
+  resources: ["secrets"]
+  verbs: ${SECRET_VERBS:-["get", "list", "watch", "create", "update", "patch", "delete"]}
+
+# 存储权限
+- apiGroups: [""]
+  resources: ["persistentvolumeclaims"]
+  verbs: ${PVC_VERBS:-["get", "list", "watch", "create", "update", "patch", "delete"]}
+
+- apiGroups: [""]
+  resources: ["persistentvolumes"]
+  verbs: ${PV_VERBS:-["get", "list", "watch"]}
+
+# Deployment 和 ReplicaSet 权限
+- apiGroups: ["apps"]
+  resources: ["deployments"]
+  verbs: ${DEPLOYMENT_VERBS:-["get", "list", "watch", "create", "update", "patch", "delete"]}
+
+- apiGroups: ["apps"]
+  resources: ["deployments/scale"]
+  verbs: ${DEPLOYMENT_SCALE_VERBS:-["get", "update", "patch"]}
+
+- apiGroups: ["apps"]
+  resources: ["deployments/status"]
+  verbs: ${DEPLOYMENT_STATUS_VERBS:-["get", "update", "patch"]}
+
+- apiGroups: ["apps"]
+  resources: ["replicasets"]
+  verbs: ${REPLICASET_VERBS:-["get", "list", "watch", "create", "update", "patch", "delete"]}
+
+# StatefulSet 权限
+- apiGroups: ["apps"]
+  resources: ["statefulsets"]
+  verbs: ${STATEFULSET_VERBS:-["get", "list", "watch", "create", "update", "patch", "delete"]}
+
+- apiGroups: ["apps"]
+  resources: ["statefulsets/scale"]
+  verbs: ${STATEFULSET_SCALE_VERBS:-["get", "update", "patch"]}
+
+# DaemonSet 权限
+- apiGroups: ["apps"]
+  resources: ["daemonsets"]
+  verbs: ${DAEMONSET_VERBS:-["get", "list", "watch", "create", "update", "patch", "delete"]}
+
+# Job 和 CronJob 权限
+- apiGroups: ["batch"]
+  resources: ["jobs"]
+  verbs: ${JOB_VERBS:-["get", "list", "watch", "create", "update", "patch", "delete"]}
+
+- apiGroups: ["batch"]
+  resources: ["cronjobs"]
+  verbs: ${CRONJOB_VERBS:-["get", "list", "watch", "create", "update", "patch", "delete"]}
+
+# Ingress 权限
+- apiGroups: ["networking.k8s.io"]
+  resources: ["ingresses"]
+  verbs: ${INGRESS_VERBS:-["get", "list", "watch", "create", "update", "patch", "delete"]}
+
+- apiGroups: ["networking.k8s.io"]
+  resources: ["ingresses/status"]
+  verbs: ${INGRESS_STATUS_VERBS:-["get", "update", "patch"]}
+
+# NetworkPolicy 权限
+- apiGroups: ["networking.k8s.io"]
+  resources: ["networkpolicies"]
+  verbs: ${NETWORK_POLICY_VERBS:-["get", "list", "watch", "create", "update", "patch", "delete"]}
+
+# ServiceAccount 权限
+- apiGroups: [""]
+  resources: ["serviceaccounts"]
+  verbs: ${SERVICE_ACCOUNT_VERBS:-["get", "list", "watch", "create", "update", "patch", "delete"]}
+
+# HorizontalPodAutoscaler 权限
+- apiGroups: ["autoscaling"]
+  resources: ["horizontalpodautoscalers"]
+  verbs: ${HPA_VERBS:-["get", "list", "watch", "create", "update", "patch", "delete"]}
+
+# PodDisruptionBudget 权限
+- apiGroups: ["policy"]
+  resources: ["poddisruptionbudgets"]
+  verbs: ${PDB_VERBS:-["get", "list", "watch", "create", "update", "patch", "delete"]}
+
+# ResourceQuota 和 LimitRange 权限
+- apiGroups: [""]
+  resources: ["resourcequotas"]
+  verbs: ${RESOURCE_QUOTA_VERBS:-["get", "list", "watch"]}
+
+- apiGroups: [""]
+  resources: ["limitranges"]
+  verbs: ${LIMIT_RANGE_VERBS:-["get", "list", "watch"]}
+
+# 节点权限（只读）
+- apiGroups: [""]
+  resources: ["nodes"]
+  verbs: ${NODE_VERBS:-["get", "list", "watch"]}
+
+- apiGroups: [""]
+  resources: ["nodes/status"]
+  verbs: ${NODE_STATUS_VERBS:-["get"]}
+
+# 事件权限
+- apiGroups: [""]
+  resources: ["events"]
+  verbs: ${EVENT_VERBS:-["get", "list", "watch", "create", "update", "patch"]}
+
+# 监控相关权限
+- apiGroups: ["metrics.k8s.io"]
+  resources: ["pods", "nodes"]
+  verbs: ${METRICS_VERBS:-["get", "list"]}
+
+# 自定义资源权限（示例）
+- apiGroups: ["${CUSTOM_API_GROUP:-example.com}"]
+  resources: ["${CUSTOM_RESOURCE:-customresources}"]
+  verbs: ${CUSTOM_RESOURCE_VERBS:-["get", "list", "watch", "create", "update", "patch", "delete"]}
+
+# Cert-Manager 权限（如果需要）
+- apiGroups: ["cert-manager.io"]
+  resources: ["certificates", "certificaterequests", "issuers", "clusterissuers"]
+  verbs: ${CERT_MANAGER_VERBS:-["get", "list", "watch", "create", "update", "patch", "delete"]}
+
+# Prometheus 监控权限（如果需要）
+- apiGroups: ["monitoring.coreos.com"]
+  resources: ["servicemonitors", "prometheusrules", "alertmanagers", "prometheuses"]
+  verbs: ${PROMETHEUS_VERBS:-["get", "list", "watch", "create", "update", "patch", "delete"]}
+
+# Istio 权限（如果需要）
+- apiGroups: ["networking.istio.io"]
+  resources: ["virtualservices", "destinationrules", "gateways", "serviceentries", "sidecars", "workloadentries"]
+  verbs: ${ISTIO_VERBS:-["get", "list", "watch", "create", "update", "patch", "delete"]}
+
+- apiGroups: ["security.istio.io"]
+  resources: ["authorizationpolicies", "peerauthentications", "requestauthentications"]
+  verbs: ${ISTIO_SECURITY_VERBS:-["get", "list", "watch", "create", "update", "patch", "delete"]}

@@ -1,0 +1,38 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: ${PVC_NAME:-${APP_NAME:-my-app}-pvc}
+  namespace: ${NAMESPACE:-default}
+  labels:
+    app: ${APP_NAME:-my-app}
+    version: ${APP_VERSION:-v1.0.0}
+    environment: ${ENVIRONMENT:-development}
+    tier: ${TIER:-storage}
+    component: ${COMPONENT:-data}
+  annotations:
+    volume.beta.kubernetes.io/storage-class: ${STORAGE_CLASS:-standard}
+    volume.kubernetes.io/selected-node: ${SELECTED_NODE:-}
+    pv.kubernetes.io/bind-completed: "yes"
+    pv.kubernetes.io/bound-by-controller: "yes"
+spec:
+  accessModes:
+    - ${ACCESS_MODE:-ReadWriteOnce}
+  resources:
+    requests:
+      storage: ${STORAGE_SIZE:-10Gi}
+    limits:
+      storage: ${STORAGE_LIMIT:-50Gi}
+  storageClassName: ${STORAGE_CLASS:-standard}
+  volumeMode: ${VOLUME_MODE:-Filesystem}
+  dataSource:
+    name: ${DATA_SOURCE_NAME:-}
+    kind: ${DATA_SOURCE_KIND:-}
+    apiGroup: ${DATA_SOURCE_API_GROUP:-}
+  selector:
+    matchLabels:
+      ${SELECTOR_LABELS:-}
+    matchExpressions:
+      - key: ${SELECTOR_KEY:-environment}
+        operator: ${SELECTOR_OPERATOR:-In}
+        values:
+          - ${SELECTOR_VALUE:-${ENVIRONMENT:-development}}

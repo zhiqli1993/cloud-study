@@ -1,0 +1,114 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: ${INGRESS_NAME:-${APP_NAME:-my-app}-ingress}
+  namespace: ${NAMESPACE:-default}
+  labels:
+    app: ${APP_NAME:-my-app}
+    version: ${APP_VERSION:-v1.0.0}
+    environment: ${ENVIRONMENT:-development}
+    tier: ${TIER:-backend}
+    component: ${COMPONENT:-api}
+  annotations:
+    # Ingress 控制器类型
+    kubernetes.io/ingress.class: ${INGRESS_CLASS:-nginx}
+    
+    # SSL 配置
+    cert-manager.io/cluster-issuer: ${CERT_ISSUER:-letsencrypt-prod}
+    cert-manager.io/acme-challenge-type: ${ACME_CHALLENGE:-http01}
+    
+    # Nginx 特定配置
+    nginx.ingress.kubernetes.io/rewrite-target: ${REWRITE_TARGET:-/}
+    nginx.ingress.kubernetes.io/ssl-redirect: "${SSL_REDIRECT:-true}"
+    nginx.ingress.kubernetes.io/force-ssl-redirect: "${FORCE_SSL_REDIRECT:-true}"
+    nginx.ingress.kubernetes.io/proxy-body-size: ${PROXY_BODY_SIZE:-1m}
+    nginx.ingress.kubernetes.io/proxy-connect-timeout: "${PROXY_CONNECT_TIMEOUT:-60}"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "${PROXY_SEND_TIMEOUT:-60}"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "${PROXY_READ_TIMEOUT:-60}"
+    nginx.ingress.kubernetes.io/client-body-buffer-size: ${CLIENT_BODY_BUFFER_SIZE:-1k}
+    
+    # 负载均衡配置
+    nginx.ingress.kubernetes.io/load-balance: ${LOAD_BALANCE:-round_robin}
+    nginx.ingress.kubernetes.io/upstream-hash-by: ${UPSTREAM_HASH:-$request_uri}
+    
+    # 会话亲和性
+    nginx.ingress.kubernetes.io/affinity: ${AFFINITY:-cookie}
+    nginx.ingress.kubernetes.io/session-cookie-name: ${SESSION_COOKIE_NAME:-INGRESSCOOKIE}
+    nginx.ingress.kubernetes.io/session-cookie-expires: "${SESSION_COOKIE_EXPIRES:-86400}"
+    nginx.ingress.kubernetes.io/session-cookie-max-age: "${SESSION_COOKIE_MAX_AGE:-86400}"
+    nginx.ingress.kubernetes.io/session-cookie-path: ${SESSION_COOKIE_PATH:-/}
+    
+    # 速率限制
+    nginx.ingress.kubernetes.io/rate-limit-rps: "${RATE_LIMIT_RPS:-10}"
+    nginx.ingress.kubernetes.io/rate-limit-rpm: "${RATE_LIMIT_RPM:-600}"
+    nginx.ingress.kubernetes.io/rate-limit-connections: "${RATE_LIMIT_CONNECTIONS:-5}"
+    
+    # CORS 配置
+    nginx.ingress.kubernetes.io/enable-cors: "${ENABLE_CORS:-true}"
+    nginx.ingress.kubernetes.io/cors-allow-origin: ${CORS_ALLOW_ORIGIN:-*}
+    nginx.ingress.kubernetes.io/cors-allow-methods: ${CORS_ALLOW_METHODS:-GET, POST, PUT, DELETE, OPTIONS}
+    nginx.ingress.kubernetes.io/cors-allow-headers: ${CORS_ALLOW_HEADERS:-DNT,X-CustomHeader,Keep-Alive,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type,Authorization}
+    nginx.ingress.kubernetes.io/cors-allow-credentials: "${CORS_ALLOW_CREDENTIALS:-true}"
+    
+    # 安全头
+    nginx.ingress.kubernetes.io/server-snippet: |
+      add_header X-Frame-Options "SAMEORIGIN" always;
+      add_header X-Content-Type-Options "nosniff" always;
+      add_header X-XSS-Protection "1; mode=block" always;
+      add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+      add_header Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline';" always;
+    
+    # AWS ALB 配置（如果使用 AWS Load Balancer Controller）
+    alb.ingress.kubernetes.io/scheme: ${ALB_SCHEME:-internet-facing}
+    alb.ingress.kubernetes.io/target-type: ${ALB_TARGET_TYPE:-ip}
+    alb.ingress.kubernetes.io/listen-ports: '[{"HTTP": 80}, {"HTTPS": 443}]'
+    alb.ingress.kubernetes.io/ssl-redirect: '443'
+    alb.ingress.kubernetes.io/certificate-arn: ${ALB_CERTIFICATE_ARN:-}
+    alb.ingress.kubernetes.io/group.name: ${ALB_GROUP_NAME:-default}
+    alb.ingress.kubernetes.io/group.order: "${ALB_GROUP_ORDER:-100}"
+spec:
+  ingressClassName: ${INGRESS_CLASS:-nginx}
+  tls:
+  - hosts:
+    - ${HOST_NAME:-example.com}
+    - ${HOST_NAME_WWW:-www.example.com}
+    secretName: ${TLS_SECRET_NAME:-${APP_NAME:-my-app}-tls}
+  rules:
+  - host: ${HOST_NAME:-example.com}
+    http:
+      paths:
+      - path: ${PATH:-/}
+        pathType: ${PATH_TYPE:-Prefix}
+        backend:
+          service:
+            name: ${SERVICE_NAME:-${APP_NAME:-my-app}-service}
+            port:
+              number: ${SERVICE_PORT:-80}
+  - host: ${HOST_NAME_WWW:-www.example.com}
+    http:
+      paths:
+      - path: ${PATH:-/}
+        pathType: ${PATH_TYPE:-Prefix}
+        backend:
+          service:
+            name: ${SERVICE_NAME:-${APP_NAME:-my-app}-service}
+            port:
+              number: ${SERVICE_PORT:-80}
+  # API 路径示例
+  - host: ${API_HOST_NAME:-api.example.com}
+    http:
+      paths:
+      - path: ${API_PATH:-/api}
+        pathType: ${API_PATH_TYPE:-Prefix}
+        backend:
+          service:
+            name: ${API_SERVICE_NAME:-${APP_NAME:-my-app}-api-service}
+            port:
+              number: ${API_SERVICE_PORT:-80}
+      - path: ${HEALTH_PATH:-/health}
+        pathType: Exact
+        backend:
+          service:
+            name: ${SERVICE_NAME:-${APP_NAME:-my-app}-service}
+            port:
+              number: ${SERVICE_PORT:-80}

@@ -1,0 +1,160 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ${APP_NAME:-my-app}
+  namespace: ${NAMESPACE:-default}
+  labels:
+    app: ${APP_NAME:-my-app}
+    version: ${APP_VERSION:-v1.0.0}
+    environment: ${ENVIRONMENT:-development}
+    tier: ${TIER:-backend}
+    component: ${COMPONENT:-api}
+  annotations:
+    deployment.kubernetes.io/revision: "1"
+    kubernetes.io/change-cause: "Initial deployment"
+spec:
+  replicas: ${REPLICAS:-3}
+  selector:
+    matchLabels:
+      app: ${APP_NAME:-my-app}
+      version: ${APP_VERSION:-v1.0.0}
+  template:
+    metadata:
+      labels:
+        app: ${APP_NAME:-my-app}
+        version: ${APP_VERSION:-v1.0.0}
+        environment: ${ENVIRONMENT:-development}
+        tier: ${TIER:-backend}
+        component: ${COMPONENT:-api}
+      annotations:
+        prometheus.io/scrape: "${PROMETHEUS_SCRAPE:-true}"
+        prometheus.io/port: "${PROMETHEUS_PORT:-8080}"
+        prometheus.io/path: "${PROMETHEUS_PATH:-/metrics}"
+    spec:
+      serviceAccountName: ${SERVICE_ACCOUNT:-default}
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 3000
+        fsGroup: 2000
+      containers:
+      - name: ${CONTAINER_NAME:-app}
+        image: ${IMAGE_REPOSITORY:-nginx}:${IMAGE_TAG:-latest}
+        imagePullPolicy: ${IMAGE_PULL_POLICY:-Always}
+        ports:
+        - name: http
+          containerPort: ${CONTAINER_PORT:-8080}
+          protocol: TCP
+        - name: metrics
+          containerPort: ${METRICS_PORT:-9090}
+          protocol: TCP
+        env:
+        - name: ENVIRONMENT
+          value: "${ENVIRONMENT:-development}"
+        - name: LOG_LEVEL
+          value: "${LOG_LEVEL:-info}"
+        - name: APP_VERSION
+          value: "${APP_VERSION:-v1.0.0}"
+        - name: POD_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
+        - name: POD_NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
+        - name: POD_IP
+          valueFrom:
+            fieldRef:
+              fieldPath: status.podIP
+        resources:
+          requests:
+            memory: "${MEMORY_REQUEST:-128Mi}"
+            cpu: "${CPU_REQUEST:-100m}"
+          limits:
+            memory: "${MEMORY_LIMIT:-512Mi}"
+            cpu: "${CPU_LIMIT:-500m}"
+        livenessProbe:
+          httpGet:
+            path: ${LIVENESS_PATH:-/health}
+            port: ${LIVENESS_PORT:-8080}
+            scheme: HTTP
+          initialDelaySeconds: ${LIVENESS_INITIAL_DELAY:-30}
+          periodSeconds: ${LIVENESS_PERIOD:-10}
+          timeoutSeconds: ${LIVENESS_TIMEOUT:-5}
+          successThreshold: 1
+          failureThreshold: 3
+        readinessProbe:
+          httpGet:
+            path: ${READINESS_PATH:-/ready}
+            port: ${READINESS_PORT:-8080}
+            scheme: HTTP
+          initialDelaySeconds: ${READINESS_INITIAL_DELAY:-5}
+          periodSeconds: ${READINESS_PERIOD:-5}
+          timeoutSeconds: ${READINESS_TIMEOUT:-3}
+          successThreshold: 1
+          failureThreshold: 3
+        startupProbe:
+          httpGet:
+            path: ${STARTUP_PATH:-/startup}
+            port: ${STARTUP_PORT:-8080}
+            scheme: HTTP
+          initialDelaySeconds: ${STARTUP_INITIAL_DELAY:-10}
+          periodSeconds: ${STARTUP_PERIOD:-10}
+          timeoutSeconds: ${STARTUP_TIMEOUT:-5}
+          successThreshold: 1
+          failureThreshold: 30
+        volumeMounts:
+        - name: config
+          mountPath: /etc/config
+          readOnly: true
+        - name: secrets
+          mountPath: /etc/secrets
+          readOnly: true
+        - name: tmp
+          mountPath: /tmp
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          capabilities:
+            drop:
+            - ALL
+      volumes:
+      - name: config
+        configMap:
+          name: ${CONFIG_MAP_NAME:-${APP_NAME:-my-app}-config}
+          defaultMode: 0644
+      - name: secrets
+        secret:
+          secretName: ${SECRET_NAME:-${APP_NAME:-my-app}-secret}
+          defaultMode: 0600
+      - name: tmp
+        emptyDir: {}
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            podAffinityTerm:
+              labelSelector:
+                matchExpressions:
+                - key: app
+                  operator: In
+                  values:
+                  - ${APP_NAME:-my-app}
+              topologyKey: kubernetes.io/hostname
+      tolerations:
+      - key: "node.kubernetes.io/not-ready"
+        operator: "Exists"
+        effect: "NoExecute"
+        tolerationSeconds: 300
+      - key: "node.kubernetes.io/unreachable"
+        operator: "Exists"
+        effect: "NoExecute"
+        tolerationSeconds: 300
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: ${MAX_UNAVAILABLE:-25%}
+      maxSurge: ${MAX_SURGE:-25%}
+  revisionHistoryLimit: ${REVISION_HISTORY_LIMIT:-10}
+  progressDeadlineSeconds: ${PROGRESS_DEADLINE:-600}

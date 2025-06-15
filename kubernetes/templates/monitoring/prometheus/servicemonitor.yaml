@@ -1,0 +1,85 @@
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: ${SERVICE_MONITOR_NAME:-${APP_NAME:-my-app}-monitor}
+  namespace: ${NAMESPACE:-default}
+  labels:
+    app: ${APP_NAME:-my-app}
+    version: ${APP_VERSION:-v1.0.0}
+    environment: ${ENVIRONMENT:-development}
+    tier: ${TIER:-monitoring}
+    component: ${COMPONENT:-metrics}
+    prometheus: ${PROMETHEUS_INSTANCE:-kube-prometheus}
+  annotations:
+    monitoring.coreos.com/description: "ServiceMonitor for ${APP_NAME:-my-app}"
+spec:
+  selector:
+    matchLabels:
+      app: ${APP_NAME:-my-app}
+      prometheus.io/scrape: "true"
+  endpoints:
+  - port: ${METRICS_PORT_NAME:-metrics}
+    path: ${METRICS_PATH:-/metrics}
+    interval: ${SCRAPE_INTERVAL:-30s}
+    scrapeTimeout: ${SCRAPE_TIMEOUT:-10s}
+    scheme: ${METRICS_SCHEME:-http}
+    honorLabels: ${HONOR_LABELS:-false}
+    honorTimestamps: ${HONOR_TIMESTAMPS:-true}
+    basicAuth:
+      username:
+        name: ${BASIC_AUTH_SECRET:-}
+        key: ${BASIC_AUTH_USERNAME_KEY:-username}
+      password:
+        name: ${BASIC_AUTH_SECRET:-}
+        key: ${BASIC_AUTH_PASSWORD_KEY:-password}
+    bearerTokenFile: ${BEARER_TOKEN_FILE:-}
+    bearerTokenSecret:
+      name: ${BEARER_TOKEN_SECRET:-}
+      key: ${BEARER_TOKEN_KEY:-token}
+    tlsConfig:
+      caFile: ${TLS_CA_FILE:-}
+      certFile: ${TLS_CERT_FILE:-}
+      keyFile: ${TLS_KEY_FILE:-}
+      serverName: ${TLS_SERVER_NAME:-}
+      insecureSkipVerify: ${TLS_INSECURE_SKIP_VERIFY:-false}
+      ca:
+        secret:
+          name: ${TLS_CA_SECRET:-}
+          key: ${TLS_CA_KEY:-ca.crt}
+      cert:
+        secret:
+          name: ${TLS_CERT_SECRET:-}
+          key: ${TLS_CERT_KEY:-tls.crt}
+      keySecret:
+        name: ${TLS_KEY_SECRET:-}
+        key: ${TLS_KEY_KEY:-tls.key}
+    relabelings:
+    - sourceLabels: [__meta_kubernetes_pod_name]
+      targetLabel: pod
+    - sourceLabels: [__meta_kubernetes_pod_container_name]
+      targetLabel: container
+    - sourceLabels: [__meta_kubernetes_namespace]
+      targetLabel: namespace
+    - sourceLabels: [__meta_kubernetes_service_name]
+      targetLabel: service
+    - sourceLabels: [__address__]
+      targetLabel: __tmp_hash
+    - sourceLabels: [__tmp_hash]
+      targetLabel: instance
+    metricRelabelings:
+    - sourceLabels: [__name__]
+      regex: ${METRIC_REGEX_DROP:-'go_gc_.*'}
+      action: drop
+    - sourceLabels: [${METRIC_LABEL_SOURCE:-job}]
+      targetLabel: ${METRIC_LABEL_TARGET:-application}
+      replacement: ${METRIC_LABEL_REPLACEMENT:-${APP_NAME:-my-app}}
+  namespaceSelector:
+    matchNames:
+    - ${NAMESPACE:-default}
+  jobLabel: ${JOB_LABEL:-app}
+  podTargetLabels:
+  - ${POD_TARGET_LABEL1:-app}
+  - ${POD_TARGET_LABEL2:-version}
+  - ${POD_TARGET_LABEL3:-environment}
+  sampleLimit: ${SAMPLE_LIMIT:-0}
+  targetLimit: ${TARGET_LIMIT:-0}
