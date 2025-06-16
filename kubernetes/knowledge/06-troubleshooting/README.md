@@ -937,34 +937,21 @@ spec:
 
 ## 文档导航
 
-### 故障排查方法论
-- [诊断流程指南](./diagnostic-methodology.md) - 系统性故障诊断方法
-- [根因分析技术](./root-cause-analysis.md) - 深入的根因分析方法
-- [故障分类标准](./incident-classification.md) - 故障严重性和分类标准
-- [应急响应流程](./emergency-response.md) - 故障应急处理流程
+### 具体故障类型
+- [Pod 故障排查](./pod-troubleshooting.md) - Pod 生命周期、状态异常、重启问题等故障诊断和解决
+- [网络故障排查](./network-troubleshooting.md) - Service 连接、DNS 解析、网络策略等网络问题
+- [存储故障排查](./storage-troubleshooting.md) - PV/PVC 绑定、存储性能、数据持久化问题
+- [节点故障排查](./node-troubleshooting.md) - 节点状态、资源不足、kubelet 问题等节点级故障
 
-### 常见故障解决
-- [Pod 故障排查](./pod-troubleshooting.md) - Pod 相关故障的诊断和解决
-- [网络故障排查](./network-troubleshooting.md) - 网络连接和 DNS 问题
-- [存储故障排查](./storage-troubleshooting.md) - 存储和持久卷问题
-- [应用故障排查](./application-troubleshooting.md) - 应用层面的故障分析
-
-### 集群级别故障
-- [控制平面故障](./control-plane-issues.md) - API Server、etcd、Scheduler 故障
-- [节点故障处理](./node-troubleshooting.md) - 节点异常和 kubelet 问题
-- [集群网络问题](./cluster-networking.md) - 集群级别的网络故障
-- [证书和认证问题](./certificate-issues.md) - 证书过期和认证问题
+### 集群级故障排查
+- [控制平面故障](./control-plane-issues.md) - API Server、etcd、Controller Manager 等控制平面组件故障
+- [集群网络问题](./cluster-networking.md) - CNI 插件、网络策略、集群内部通信问题
+- [证书相关问题](./certificate-issues.md) - TLS 证书过期、CA 证书、RBAC 认证问题
 
 ### 调试工具和技术
-- [命令行工具](./kubectl-debugging.md) - kubectl 调试命令大全
-- [调试容器技术](./debug-containers.md) - 容器调试的高级技术
-- [性能分析工具](./performance-debugging.md) - 性能问题的分析工具
-- [日志分析技巧](./log-analysis.md) - 日志收集和分析方法
-
-### 自动化和预防
-- [自动故障恢复](./automated-recovery.md) - 自动化故障检测和恢复
-- [监控告警配置](./monitoring-alerts.md) - 全面的监控告警配置
-- [故障演练实践](./chaos-engineering.md) - Chaos Engineering 实践
-- [预防性维护](./preventive-maintenance.md) - 预防性维护和健康检查
+- [kubectl 调试技巧](./kubectl-debugging.md) - kubectl 命令行工具的高级调试功能和技巧
+- [调试容器使用](./debug-containers.md) - 临时调试容器、sidecar 调试、容器内调试
+- [日志分析方法](./log-analysis.md) - 系统日志、应用日志、审计日志的分析方法
+- [性能调试技术](./performance-debugging.md) - 性能瓶颈定位、资源使用分析、性能优化
 
 通过系统性的故障排查方法和丰富的实践经验，可以快速定位和解决 Kubernetes 集群中的各种问题，确保系统的稳定性和可靠性。
